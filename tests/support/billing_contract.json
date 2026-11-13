@@ -1,0 +1,479 @@
+{
+  "_meta": {
+    "openapi_info_version": "0.1.0",
+    "refresh": "python3 tests/support/refresh_billing_contract.py  (reads a sibling billing_service/ or billing-service/ checkout, or $BILLING_SERVICE_REPO). CI freshness gate: billing-service tests/test_consumer_contract_pins.py pins _meta.schema_sha256 and fails on any change to these schemas.",
+    "schema_sha256": [
+      {
+        "schema": "AccessChargeCreate",
+        "sha256": "842ca6db39c4772d196197c9d31e6aa96451bdbcd4bf34a24a9fa0f35f248360"
+      },
+      {
+        "schema": "BudgetPeriod",
+        "sha256": "bb98876f8355d9912d9428df298494aee7e86b94cd6d469ae0ffe7dea7c84c5b"
+      },
+      {
+        "schema": "MarkupRuleCreate",
+        "sha256": "9b2fce5e2b26f4d409a2b39c909bceff9d8adcfc3e5899c855b450fc7e58a47d"
+      },
+      {
+        "schema": "QuotaConfigRequest",
+        "sha256": "121327d18b846e5f7926be3c7fc1cacfa0472c36a290d4826915b35e65070b33"
+      },
+      {
+        "schema": "TokenBudgetCreate",
+        "sha256": "3501c354636e5ad2a634712b8f82e9238e07873be544ca35107b131547ce9b8f"
+      }
+    ],
+    "schemas_vendored": [
+      "QuotaConfigRequest",
+      "TokenBudgetCreate",
+      "BudgetPeriod",
+      "MarkupRuleCreate",
+      "AccessChargeCreate"
+    ],
+    "source_commit": "4ecd0a2a1bab969a57d738297c76878a7034c67b",
+    "source_commit_date": "2026-10-21",
+    "source_path": "docs/openapi.json",
+    "source_repo": "billing_service (github.com/nonagenticai/billing_service)",
+    "why": "licenses POSTs these two bodies to billing (/api/quota/config and /api/budget). A vendored copy makes the contract guard UNCONDITIONAL: it can never skip itself green when the sibling repo is absent (CI runners do not check out billing_service).",
+    "write_gates_sha256": "6e5996f12bfe6f1086f1acf9bb107fd035ce1eda9ce5f54db8744c68853be459"
+  },
+  "schemas": {
+    "AccessChargeCreate": {
+      "properties": {
+        "amount_usd": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Amount Usd"
+        },
+        "cadence": {
+          "default": "monthly",
+          "enum": [
+            "monthly",
+            "one_time",
+            "per_seat"
+          ],
+          "title": "Cadence",
+          "type": "string"
+        },
+        "effective_from": {
+          "format": "date-time",
+          "title": "Effective From",
+          "type": "string"
+        },
+        "effective_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Effective Until"
+        },
+        "included_cost_usd": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Included Cost Usd"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Notes"
+        },
+        "service_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Service Key"
+        },
+        "tenant_id": {
+          "title": "Tenant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "amount_usd"
+      ],
+      "title": "AccessChargeCreate",
+      "type": "object"
+    },
+    "BudgetPeriod": {
+      "enum": [
+        "monthly",
+        "weekly"
+      ],
+      "title": "BudgetPeriod",
+      "type": "string"
+    },
+    "MarkupRuleCreate": {
+      "properties": {
+        "byo": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Byo"
+        },
+        "effective_from": {
+          "format": "date-time",
+          "title": "Effective From",
+          "type": "string"
+        },
+        "effective_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Effective Until"
+        },
+        "license_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "License Id"
+        },
+        "markup_pct": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Markup Pct"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Notes"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Project Id"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Provider"
+        },
+        "service_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Service Key"
+        },
+        "surcharge_cache_creation_per_1m_usd": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Surcharge Cache Creation Per 1M Usd"
+        },
+        "surcharge_cache_read_per_1m_usd": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Surcharge Cache Read Per 1M Usd"
+        },
+        "surcharge_input_per_1m_usd": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Surcharge Input Per 1M Usd"
+        },
+        "surcharge_output_per_1m_usd": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Surcharge Output Per 1M Usd"
+        },
+        "surcharge_per_request_usd": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Surcharge Per Request Usd"
+        },
+        "tenant_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Tenant Id"
+        }
+      },
+      "title": "MarkupRuleCreate",
+      "type": "object"
+    },
+    "QuotaConfigRequest": {
+      "properties": {
+        "app_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "App Id"
+        },
+        "app_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "App Name"
+        },
+        "license_id": {
+          "title": "License Id",
+          "type": "string"
+        },
+        "quota_monthly": {
+          "minimum": 0.0,
+          "title": "Quota Monthly",
+          "type": "integer"
+        },
+        "tenant_id": {
+          "minLength": 1,
+          "title": "Tenant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "license_id",
+        "quota_monthly",
+        "tenant_id"
+      ],
+      "title": "QuotaConfigRequest",
+      "type": "object"
+    },
+    "TokenBudgetCreate": {
+      "properties": {
+        "budget_tokens": {
+          "minimum": 0.0,
+          "title": "Budget Tokens",
+          "type": "integer"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Expires At"
+        },
+        "includes_input": {
+          "default": true,
+          "title": "Includes Input",
+          "type": "boolean"
+        },
+        "includes_output": {
+          "default": true,
+          "title": "Includes Output",
+          "type": "boolean"
+        },
+        "license_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "License Id"
+        },
+        "period": {
+          "$ref": "#/components/schemas/BudgetPeriod",
+          "default": "monthly"
+        },
+        "priority": {
+          "default": 100,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "source": {
+          "default": "manual",
+          "title": "Source",
+          "type": "string"
+        },
+        "starts_at": {
+          "format": "date-time",
+          "title": "Starts At",
+          "type": "string"
+        },
+        "tenant_id": {
+          "title": "Tenant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "budget_tokens"
+      ],
+      "title": "TokenBudgetCreate",
+      "type": "object"
+    }
+  },
+  "write_gates": {
+    "POST /api/config/access-charges": {
+      "dependency": "require_pricing_writer",
+      "roles": [
+        "license-admin",
+        "pricing-writer"
+      ]
+    },
+    "POST /api/config/markup-rules": {
+      "dependency": "require_pricing_writer",
+      "roles": [
+        "license-admin",
+        "pricing-writer"
+      ]
+    }
+  }
+}

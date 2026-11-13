@@ -1,0 +1,21 @@
+-- The ONE hand-authored input to the corpus arm of the schema-parity gate.
+--
+-- `init.sql` created region/subject/app/plan/license/token, and the migrations
+-- are increments on top of IT. But `license.tenant_id` was added to the ORM
+-- before migration 001, so it exists in `models.py` and in prod and in NO .sql
+-- file. Without it, migrations 004 (UPDATE ... SET tenant_id), 005 (partial
+-- index on tenant_id) and 016 (retype + FK) cannot replay from empty.
+--
+-- Measured on prod 2026-08-12: `license.tenant_id` is `uuid NOT NULL`.
+-- Pre-016 it was VARCHAR(255), which is what the corpus expects to find here;
+-- migration 016 retypes it to uuid.
+--
+-- NOT NULL is deliberately NOT set. No migration sets it either, and that
+-- absence is a REAL divergence the gate must record, not something the shim
+-- should paper over.
+--
+-- ⛔ THIS FILE MUST STAY ONE STATEMENT.
+-- Growing it is exactly how someone would "fix" a red corpus arm by hiding a
+-- failure instead of fixing the migration that caused it. Enforced by
+-- tests/unit/test_schema_parity.py::test_the_shim_is_one_statement.
+ALTER TABLE license ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(255);

@@ -1,0 +1,110 @@
+[project]
+license = "Apache-2.0"
+name = "licenses"
+version = "0.1.0"
+description = "Licensing Service API"
+authors = [
+    {name = "georgiedekker", email = "georgiedekker@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.120.0",
+    "pydantic>=2.12.3",
+    "starlette>=1.3.0",  # CVE-2026-54282 fixed in 1.3.0
+    "uvicorn[standard]>=0.38.0",
+    "python-multipart>=0.0.31",  # CVE-2026-53538/53539/53540 fixed in 0.0.30/0.0.31
+    "pyjwt>=2.15.1",
+    "cryptography>=50.0.0",  # GHSA-537c-gmf6-5ccf fixed in 48.0.1; floor = CI floor-honesty gate
+    "requests>=2.32.5",
+    # httpx and anyio are DIRECT imports of auth/middleware.py and the app code.
+    # Both were undeclared and reached the image only as transitives — httpx via
+    # python-keycloak (removed in #140, which crashlooped prod until this landed),
+    # anyio via starlette. A runtime dep that is only ever a transitive is one
+    # unrelated removal away from a ModuleNotFoundError at import time.
+    "httpx>=0.27.0",
+    "anyio>=4.14.2",  # floor = CI floor-honesty gate
+    "sqlalchemy>=2.0",
+    "psycopg[binary,pool]>=3.2.0",
+    "fastapi-cors>=0.0.6",
+    "python-json-logger>=4.0.0",
+    "pydantic-settings>=2.14.2",  # GHSA-4xgf-cpjx-pc3j fixed in 2.14.2
+    "urllib3>=2.8.0",  # CVE-2026-44431, CVE-2026-44432 fixed in 2.7.0
+    "werkzeug>=3.1.9",
+    "marshmallow>=4.1.2",
+    "prometheus-client>=0.21.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+include = [
+    "main.py",
+    "models.py",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.ty.environment]
+python-version = "3.14"
+
+[tool.ty.rules]
+unresolved-import = "ignore"
+
+[project.optional-dependencies]
+contract = [
+    "schemathesis>=3.36.0",
+]
+
+[dependency-groups]
+dev = [
+    "ty>=0.0.23",
+    "ruff>=0.15",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=0.23.0",
+    "detect-secrets>=1.5.0",
+    "pytest-timeout>=2.4.0",
+]
+
+[tool.local-ci]
+# Pre-push hook test gate is capped at 5min; the licenses unit suite
+# (postgres-backed) takes far longer. Local hook stays focused
+# on ruff/ty — so CI is the ONLY test gate for this repo, and nothing here
+# runs before a push.
+skip_tests = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short -m 'not integration'"
+# pytest-timeout was already a dev dependency but nothing configured it, so CI
+# armed no per-test deadline at all: a test that deadlocks on a leaked DB session
+# or a blocked psycopg call died as an unattributable 25-minute runner kill
+# instead of a named failure pointing at one test.
+#
+# method = "thread" (not the default SIGALRM): a psycopg call blocked in C
+# releases the GIL, so the watchdog thread still runs and still fires. SIGALRM
+# would be delivered to the main thread and could not interrupt it there.
+timeout = 60
+timeout_method = "thread"
+markers = [
+    # Dual-mode, and the default is the one CI uses: with LICENSES_URL unset the
+    # conftest drives the app in-process via TestClient against DATABASE_URL, so
+    # these need a real Postgres but NOT the cluster and NOT a LICENSE_TOKEN.
+    # Setting LICENSES_URL switches the same tests to a live cluster service.
+    # Selected in CI by the archetype's integration_test_select pass; the addopts
+    # `-m 'not integration'` above is what keeps them out of the unit run.
+    "integration: needs a real Postgres; hits the live cluster only when LICENSES_URL is set",
+]

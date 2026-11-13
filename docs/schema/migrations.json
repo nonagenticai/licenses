@@ -1,0 +1,1928 @@
+{
+  "_provenance": {
+    "genesis": "init.sql",
+    "migration_files": [
+      "001_add_rate_limit_fields.sql",
+      "002_add_token_budget_monthly.sql",
+      "003_create_tenants_table.sql",
+      "004_backfill_license_tenant_uuid.sql",
+      "005_dedup_active_licenses.sql",
+      "006_add_tenant_byo_mode.sql",
+      "007_byo_mode_platform_only.sql",
+      "008_add_token_hash_index.sql",
+      "009_tenant_app_byo_mode.sql",
+      "010_offering.sql",
+      "011_offering_access_price.sql",
+      "012_offering_included_allowance.sql",
+      "013_seed_render_e2e_tenant.sql",
+      "014_seed_platform_internal_tenants.sql",
+      "015_rename_skill_builder_app_key.sql",
+      "016_add_license_tenant_fk.sql",
+      "017_plan_quota_monthly_nonneg.sql",
+      "018_add_license_metering_provisioned_at.sql",
+      "019_add_license_metering_verified_at.sql",
+      "020_meter_every_plan.sql",
+      "021_add_tenants_byo_mode_check.sql",
+      "022_add_app_audience.sql",
+      "023_add_tenant_archived_at.sql",
+      "024_rename_platform_cp_placeholder_names.sql",
+      "025_add_tenant_app_byo_mode_offering_code.sql",
+      "026_rename_improvement_tenant_placeholders.sql",
+      "027_add_tenant_kind_and_cost_centre.sql",
+      "028_add_bundle_and_bundle_app.sql",
+      "029_add_subject_tenant.sql",
+      "030_backfill_tenant_cost_centre.sql",
+      "031_service_tenants_are_not_byo.sql",
+      "032_backfill_subject_tenant.sql",
+      "033_enum_checks_and_service_byo_guard.sql",
+      "034_tenant_cost_centre_vocabulary.sql",
+      "035_tenant_id_must_not_be_a_subject.sql",
+      "036_license_soft_delete.sql",
+      "037_subject_sub_must_not_be_a_tenant_id.sql",
+      "038_token_granted_roles.sql",
+      "039_tenant_bundle_and_license_bundle.sql",
+      "040_inference_router_bundle.sql",
+      "041_license_metering_overrides.sql",
+      "042_tenants_byo_mode_default_local_allowed.sql",
+      "043_tenants_budget_currency.sql",
+      "044_token_long_lived_register.sql",
+      "045_rekey_book_fulfillment_tenant.sql",
+      "046_rekey_portal_render_e2e_tenant.sql",
+      "047_subject_actor_sub.sql",
+      "048_subject_actor_sub_presenters.sql",
+      "049_rekey_cdmsfirst_demo_tenant.sql",
+      "050_tenant_ownership_per_app.sql",
+      "051_n8n_nodes_bundle_and_retire_legacy_netcare.sql",
+      "052_bundle_ensurer.sql",
+      "053_tenant_names_unique_among_live.sql",
+      "054_bundle_minter_owners_and_service_tenant_owners.sql",
+      "055_provisioning_bundle_minter_owner.sql",
+      "056_growth_bundle_minter_owner.sql",
+      "057_kag_owner_and_kag_research_bundle.sql",
+      "058_tenants_byo_mode_default_byo_required.sql",
+      "059_app_requires_and_conveyor_bundle.sql",
+      "060_kag_frontend_bundle_minter_owner.sql",
+      "061_kag_bundle_minter_owner.sql",
+      "062_evidence_review_app.sql",
+      "063_kag_service_bundle.sql",
+      "064_karma_bundle_minter_owner.sql",
+      "065_secrets_in_conveyor_bundle.sql",
+      "066_skill_builder_in_conveyor_bundle.sql",
+      "067_strata_configurator_and_care_bus_apps.sql",
+      "068_care_bus_licenses_admin_client.sql",
+      "069_fr_test_user_strata_grants.sql",
+      "070_agent_app.sql",
+      "071_agent_byo_plan.sql",
+      "072_realm_owner.sql",
+      "073_svc_agent_api_w2v_grant.sql",
+      "074_realm_owner_agent.sql",
+      "075_speech_platform_app.sql",
+      "076_realm_owner_w2v.sql",
+      "077_realm_owner_fr.sql",
+      "078_care_bus_early_access.sql",
+      "087_revoke_stale_fr_tenant_grants.sql"
+    ],
+    "shim": "schema_genesis_shim.sql"
+  },
+  "columns": {
+    "api_client.client_id": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(255)"
+    },
+    "api_client.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "api_client.cross_owner": {
+      "collation": null,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "boolean"
+    },
+    "api_client.owner_key": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(64)"
+    },
+    "api_client.realm": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(255)"
+    },
+    "app.audience": {
+      "collation": "default",
+      "default": "'platform'::character varying",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(16)"
+    },
+    "app.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "app.description": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "text"
+    },
+    "app.id": {
+      "collation": null,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "app.key": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "text"
+    },
+    "app.name": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "text"
+    },
+    "app.revoked": {
+      "collation": null,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "boolean"
+    },
+    "app_issuer.app_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "app_issuer.owner_key": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(64)"
+    },
+    "app_requires.app_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "app_requires.caller_owner_key": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(64)"
+    },
+    "app_requires.required_app_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "bundle.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "bundle.description": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "text"
+    },
+    "bundle.id": {
+      "collation": null,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "bundle.key": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(64)"
+    },
+    "bundle.name": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(255)"
+    },
+    "bundle.revoked": {
+      "collation": null,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "boolean"
+    },
+    "bundle_app.app_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "bundle_app.bundle_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "bundle_app.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "bundle_caller.app_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "bundle_caller.bundle_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "bundle_caller.owner_key": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(64)"
+    },
+    "bundle_ensurer.bundle_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "bundle_ensurer.owner_key": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(64)"
+    },
+    "license.app_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "license.bundle_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "uuid"
+    },
+    "license.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "license.delete_reason": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "text"
+    },
+    "license.deleted_at": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "timestamp with time zone"
+    },
+    "license.deleted_by": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "text"
+    },
+    "license.deleted_from_status": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "character varying(50)"
+    },
+    "license.expires_at": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "timestamp with time zone"
+    },
+    "license.id": {
+      "collation": null,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "license.is_dependency": {
+      "collation": null,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "boolean"
+    },
+    "license.metadata": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "jsonb"
+    },
+    "license.metering_provisioned_at": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "timestamp with time zone"
+    },
+    "license.metering_verified_at": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "timestamp with time zone"
+    },
+    "license.plan_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "license.quota_override": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "integer"
+    },
+    "license.region_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "uuid"
+    },
+    "license.revoked_at": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "timestamp with time zone"
+    },
+    "license.starts_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "license.status": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "text"
+    },
+    "license.subject_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "license.tenant_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "uuid"
+    },
+    "license.token_budget_override": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "integer"
+    },
+    "license.updated_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "offering.access_cadence": {
+      "collation": "default",
+      "default": "'monthly'::character varying",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(16)"
+    },
+    "offering.access_price_usd": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "numeric(20,8)"
+    },
+    "offering.app_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "offering.byo_mode": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(32)"
+    },
+    "offering.code": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(64)"
+    },
+    "offering.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "offering.id": {
+      "collation": null,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "offering.included_allowance_usd": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "numeric(20,8)"
+    },
+    "offering.markup_pct": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "numeric(6,2)"
+    },
+    "offering.name": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(255)"
+    },
+    "offering.notes": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "text"
+    },
+    "offering.surcharge_cache_creation_per_1m_usd": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "numeric(20,8)"
+    },
+    "offering.surcharge_cache_read_per_1m_usd": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "numeric(20,8)"
+    },
+    "offering.surcharge_input_per_1m_usd": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "numeric(20,8)"
+    },
+    "offering.surcharge_output_per_1m_usd": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "numeric(20,8)"
+    },
+    "offering.surcharge_per_request_usd": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "numeric(20,8)"
+    },
+    "offering.updated_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "plan.app_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "plan.code": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "text"
+    },
+    "plan.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "plan.description": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "text"
+    },
+    "plan.duration_days": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "integer"
+    },
+    "plan.id": {
+      "collation": null,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "plan.name": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "text"
+    },
+    "plan.quota_monthly": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "integer"
+    },
+    "plan.rate_limit_burst": {
+      "collation": null,
+      "default": "10",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "integer"
+    },
+    "plan.rate_limit_rpm": {
+      "collation": null,
+      "default": "60",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "integer"
+    },
+    "plan.region_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "uuid"
+    },
+    "plan.revoked": {
+      "collation": null,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "boolean"
+    },
+    "plan.token_budget_monthly": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "integer"
+    },
+    "realm_owner.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "realm_owner.owner_key": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(64)"
+    },
+    "realm_owner.realm": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(255)"
+    },
+    "region.active": {
+      "collation": null,
+      "default": "true",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "boolean"
+    },
+    "region.code": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "text"
+    },
+    "region.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "region.id": {
+      "collation": null,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "region.name": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "text"
+    },
+    "subject.actor_sub": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "uuid"
+    },
+    "subject.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "subject.id": {
+      "collation": null,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "subject.keycloak_realm": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "text"
+    },
+    "subject.keycloak_sub": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "text"
+    },
+    "subject.tenant_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "uuid"
+    },
+    "tenant_app_byo_mode.app_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "tenant_app_byo_mode.byo_mode": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(32)"
+    },
+    "tenant_app_byo_mode.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "tenant_app_byo_mode.offering_code": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "character varying(64)"
+    },
+    "tenant_app_byo_mode.tenant_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "tenant_app_byo_mode.updated_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "tenant_app_grant.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "tenant_app_grant.granted_by": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "text"
+    },
+    "tenant_app_grant.grantee_owner_key": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(64)"
+    },
+    "tenant_app_grant.id": {
+      "collation": null,
+      "default": "uuidv7()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "tenant_app_grant.revoked_at": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "timestamp with time zone"
+    },
+    "tenant_app_grant.tenant_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "tenant_bundle.bundle_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "tenant_bundle.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "tenant_bundle.tenant_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "tenant_dependency_grant.app_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "tenant_dependency_grant.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "tenant_dependency_grant.granted_by": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "text"
+    },
+    "tenant_dependency_grant.owner_key": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(64)"
+    },
+    "tenant_dependency_grant.tenant_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "tenant_owner.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "tenant_owner.display_name": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(255)"
+    },
+    "tenant_owner.key": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(64)"
+    },
+    "tenants.archived_at": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "timestamp with time zone"
+    },
+    "tenants.budget_currency": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "character(3)"
+    },
+    "tenants.byo_mode": {
+      "collation": "default",
+      "default": "'byo_required'::character varying",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(32)"
+    },
+    "tenants.cost_centre": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "character varying(64)"
+    },
+    "tenants.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "tenants.external_ref": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "character varying(255)"
+    },
+    "tenants.id": {
+      "collation": null,
+      "default": "uuidv7()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "tenants.keycloak_realm": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "character varying(255)"
+    },
+    "tenants.kind": {
+      "collation": "default",
+      "default": "'unclassified'::character varying",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(16)"
+    },
+    "tenants.name": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(255)"
+    },
+    "tenants.owner_key": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "character varying(64)"
+    },
+    "token.created_at": {
+      "collation": null,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "timestamp with time zone"
+    },
+    "token.expires_at": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "timestamp with time zone"
+    },
+    "token.granted_roles": {
+      "collation": "default",
+      "default": "'{}'::text[]",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "text[]"
+    },
+    "token.id": {
+      "collation": null,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "token.last_used_at": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "timestamp with time zone"
+    },
+    "token.license_id": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "uuid"
+    },
+    "token.long_lived_owner": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "text"
+    },
+    "token.long_lived_reason": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "text"
+    },
+    "token.revoked": {
+      "collation": null,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "boolean"
+    },
+    "token.revoked_at": {
+      "collation": null,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": false,
+      "type": "timestamp with time zone"
+    },
+    "token.token_hash": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "text"
+    },
+    "token.token_type": {
+      "collation": "default",
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "not_null": true,
+      "type": "text"
+    }
+  },
+  "constraints": {
+    "api_client.api_client_pkey": {
+      "def": "PRIMARY KEY (realm, client_id)",
+      "type": "p",
+      "validated": true
+    },
+    "api_client.fk_api_client_owner": {
+      "def": "FOREIGN KEY (owner_key) REFERENCES tenant_owner(key) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "app.app_key_key": {
+      "def": "UNIQUE (key)",
+      "type": "u",
+      "validated": true
+    },
+    "app.app_pkey": {
+      "def": "PRIMARY KEY (id)",
+      "type": "p",
+      "validated": true
+    },
+    "app.ck_app_audience": {
+      "def": "CHECK (((audience)::text = ANY ((ARRAY['human'::character varying, 'platform'::character varying, 'automation'::character varying])::text[])))",
+      "type": "c",
+      "validated": true
+    },
+    "app_issuer.app_issuer_pkey": {
+      "def": "PRIMARY KEY (app_id, owner_key)",
+      "type": "p",
+      "validated": true
+    },
+    "app_issuer.fk_app_issuer_app": {
+      "def": "FOREIGN KEY (app_id) REFERENCES app(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "app_issuer.fk_app_issuer_owner": {
+      "def": "FOREIGN KEY (owner_key) REFERENCES tenant_owner(key) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "app_requires.app_requires_pkey": {
+      "def": "PRIMARY KEY (app_id, required_app_id)",
+      "type": "p",
+      "validated": true
+    },
+    "app_requires.ck_app_requires_not_self": {
+      "def": "CHECK ((app_id <> required_app_id))",
+      "type": "c",
+      "validated": true
+    },
+    "app_requires.fk_app_requires_app": {
+      "def": "FOREIGN KEY (app_id) REFERENCES app(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "app_requires.fk_app_requires_caller_owner": {
+      "def": "FOREIGN KEY (caller_owner_key) REFERENCES tenant_owner(key) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "app_requires.fk_app_requires_required_app": {
+      "def": "FOREIGN KEY (required_app_id) REFERENCES app(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "bundle.bundle_key_key": {
+      "def": "UNIQUE (key)",
+      "type": "u",
+      "validated": true
+    },
+    "bundle.bundle_pkey": {
+      "def": "PRIMARY KEY (id)",
+      "type": "p",
+      "validated": true
+    },
+    "bundle_app.bundle_app_app_id_fkey": {
+      "def": "FOREIGN KEY (app_id) REFERENCES app(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "bundle_app.bundle_app_bundle_id_fkey": {
+      "def": "FOREIGN KEY (bundle_id) REFERENCES bundle(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "bundle_app.bundle_app_pkey": {
+      "def": "PRIMARY KEY (bundle_id, app_id)",
+      "type": "p",
+      "validated": true
+    },
+    "bundle_caller.bundle_caller_pkey": {
+      "def": "PRIMARY KEY (bundle_id, owner_key, app_id)",
+      "type": "p",
+      "validated": true
+    },
+    "bundle_caller.fk_bundle_caller_app": {
+      "def": "FOREIGN KEY (app_id) REFERENCES app(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "bundle_caller.fk_bundle_caller_bundle": {
+      "def": "FOREIGN KEY (bundle_id) REFERENCES bundle(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "bundle_caller.fk_bundle_caller_owner": {
+      "def": "FOREIGN KEY (owner_key) REFERENCES tenant_owner(key) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "bundle_ensurer.bundle_ensurer_pkey": {
+      "def": "PRIMARY KEY (bundle_id, owner_key)",
+      "type": "p",
+      "validated": true
+    },
+    "bundle_ensurer.fk_bundle_ensurer_bundle": {
+      "def": "FOREIGN KEY (bundle_id) REFERENCES bundle(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "bundle_ensurer.fk_bundle_ensurer_owner": {
+      "def": "FOREIGN KEY (owner_key) REFERENCES tenant_owner(key) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "license.ck_license_dependency_unbundled": {
+      "def": "CHECK (((NOT is_dependency) OR (bundle_id IS NULL)))",
+      "type": "c",
+      "validated": true
+    },
+    "license.ck_license_quota_override_nonneg": {
+      "def": "CHECK (((quota_override IS NULL) OR (quota_override >= 0)))",
+      "type": "c",
+      "validated": true
+    },
+    "license.ck_license_status": {
+      "def": "CHECK ((status = ANY (ARRAY['active'::text, 'revoked'::text, 'expired'::text, 'pending'::text])))",
+      "type": "c",
+      "validated": true
+    },
+    "license.ck_license_token_budget_override_nonneg": {
+      "def": "CHECK (((token_budget_override IS NULL) OR (token_budget_override >= 0)))",
+      "type": "c",
+      "validated": true
+    },
+    "license.fk_license_bundle": {
+      "def": "FOREIGN KEY (bundle_id) REFERENCES bundle(id) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "license.fk_license_tenant": {
+      "def": "FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "license.license_app_id_fkey": {
+      "def": "FOREIGN KEY (app_id) REFERENCES app(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "license.license_pkey": {
+      "def": "PRIMARY KEY (id)",
+      "type": "p",
+      "validated": true
+    },
+    "license.license_plan_id_fkey": {
+      "def": "FOREIGN KEY (plan_id) REFERENCES plan(id) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "license.license_region_id_fkey": {
+      "def": "FOREIGN KEY (region_id) REFERENCES region(id)",
+      "type": "f",
+      "validated": true
+    },
+    "license.license_subject_id_fkey": {
+      "def": "FOREIGN KEY (subject_id) REFERENCES subject(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "offering.ck_offering_access_cadence": {
+      "def": "CHECK (((access_cadence)::text = ANY ((ARRAY['monthly'::character varying, 'one_time'::character varying])::text[])))",
+      "type": "c",
+      "validated": true
+    },
+    "offering.ck_offering_byo_mode": {
+      "def": "CHECK (((byo_mode)::text = ANY ((ARRAY['local_allowed'::character varying, 'byo_required'::character varying, 'platform_only'::character varying])::text[])))",
+      "type": "c",
+      "validated": true
+    },
+    "offering.offering_app_id_fkey": {
+      "def": "FOREIGN KEY (app_id) REFERENCES app(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "offering.offering_pkey": {
+      "def": "PRIMARY KEY (id)",
+      "type": "p",
+      "validated": true
+    },
+    "offering.ux_offering_app_code": {
+      "def": "UNIQUE (app_id, code)",
+      "type": "u",
+      "validated": true
+    },
+    "plan.ck_plan_quota_monthly_nonneg": {
+      "def": "CHECK (((quota_monthly IS NULL) OR (quota_monthly >= 0)))",
+      "type": "c",
+      "validated": true
+    },
+    "plan.plan_app_id_fkey": {
+      "def": "FOREIGN KEY (app_id) REFERENCES app(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "plan.plan_pkey": {
+      "def": "PRIMARY KEY (id)",
+      "type": "p",
+      "validated": true
+    },
+    "plan.plan_region_id_fkey": {
+      "def": "FOREIGN KEY (region_id) REFERENCES region(id)",
+      "type": "f",
+      "validated": true
+    },
+    "realm_owner.fk_realm_owner_owner": {
+      "def": "FOREIGN KEY (owner_key) REFERENCES tenant_owner(key) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "realm_owner.realm_owner_pkey": {
+      "def": "PRIMARY KEY (realm)",
+      "type": "p",
+      "validated": true
+    },
+    "region.region_code_key": {
+      "def": "UNIQUE (code)",
+      "type": "u",
+      "validated": true
+    },
+    "region.region_pkey": {
+      "def": "PRIMARY KEY (id)",
+      "type": "p",
+      "validated": true
+    },
+    "subject.fk_subject_tenant": {
+      "def": "FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "subject.subject_keycloak_sub_key": {
+      "def": "UNIQUE (keycloak_sub)",
+      "type": "u",
+      "validated": true
+    },
+    "subject.subject_pkey": {
+      "def": "PRIMARY KEY (id)",
+      "type": "p",
+      "validated": true
+    },
+    "tenant_app_byo_mode.ck_tenant_app_byo_mode": {
+      "def": "CHECK (((byo_mode)::text = ANY ((ARRAY['local_allowed'::character varying, 'byo_required'::character varying, 'platform_only'::character varying])::text[])))",
+      "type": "c",
+      "validated": true
+    },
+    "tenant_app_byo_mode.tenant_app_byo_mode_app_id_fkey": {
+      "def": "FOREIGN KEY (app_id) REFERENCES app(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "tenant_app_byo_mode.tenant_app_byo_mode_pkey": {
+      "def": "PRIMARY KEY (tenant_id, app_id)",
+      "type": "p",
+      "validated": true
+    },
+    "tenant_app_byo_mode.tenant_app_byo_mode_tenant_id_fkey": {
+      "def": "FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "tenant_app_grant.fk_tenant_app_grant_owner": {
+      "def": "FOREIGN KEY (grantee_owner_key) REFERENCES tenant_owner(key) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "tenant_app_grant.fk_tenant_app_grant_tenant": {
+      "def": "FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "tenant_app_grant.tenant_app_grant_pkey": {
+      "def": "PRIMARY KEY (id)",
+      "type": "p",
+      "validated": true
+    },
+    "tenant_bundle.fk_tenant_bundle_bundle": {
+      "def": "FOREIGN KEY (bundle_id) REFERENCES bundle(id) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "tenant_bundle.fk_tenant_bundle_tenant": {
+      "def": "FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "tenant_bundle.tenant_bundle_pkey": {
+      "def": "PRIMARY KEY (tenant_id, bundle_id)",
+      "type": "p",
+      "validated": true
+    },
+    "tenant_dependency_grant.fk_tenant_dependency_grant_app": {
+      "def": "FOREIGN KEY (app_id) REFERENCES app(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "tenant_dependency_grant.fk_tenant_dependency_grant_owner": {
+      "def": "FOREIGN KEY (owner_key) REFERENCES tenant_owner(key) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "tenant_dependency_grant.fk_tenant_dependency_grant_tenant": {
+      "def": "FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "tenant_dependency_grant.tenant_dependency_grant_pkey": {
+      "def": "PRIMARY KEY (tenant_id, owner_key, app_id)",
+      "type": "p",
+      "validated": true
+    },
+    "tenant_owner.ck_tenant_owner_key_format": {
+      "def": "CHECK (((key)::text ~ '^[a-z0-9][a-z0-9-]*$'::text))",
+      "type": "c",
+      "validated": true
+    },
+    "tenant_owner.tenant_owner_pkey": {
+      "def": "PRIMARY KEY (key)",
+      "type": "p",
+      "validated": true
+    },
+    "tenants.ck_tenants_budget_currency": {
+      "def": "CHECK ((budget_currency = ANY (ARRAY['EUR'::bpchar, 'USD'::bpchar, 'CAD'::bpchar])))",
+      "type": "c",
+      "validated": true
+    },
+    "tenants.ck_tenants_byo_mode": {
+      "def": "CHECK (((byo_mode)::text = ANY ((ARRAY['local_allowed'::character varying, 'byo_required'::character varying, 'platform_only'::character varying])::text[])))",
+      "type": "c",
+      "validated": true
+    },
+    "tenants.ck_tenants_cost_centre": {
+      "def": "CHECK (((cost_centre IS NULL) OR ((cost_centre)::text = ANY ((ARRAY['service'::character varying, 'tests'::character varying, 'customers'::character varying, 'ci'::character varying, 'improvement'::character varying, 'merqi'::character varying])::text[]))))",
+      "type": "c",
+      "validated": true
+    },
+    "tenants.ck_tenants_kind": {
+      "def": "CHECK (((kind)::text = ANY ((ARRAY['customer'::character varying, 'internal'::character varying, 'service'::character varying, 'test'::character varying, 'unclassified'::character varying])::text[])))",
+      "type": "c",
+      "validated": true
+    },
+    "tenants.ck_tenants_name_format": {
+      "def": "CHECK (((name)::text ~ '^[a-z0-9][a-z0-9-]*$'::text))",
+      "type": "c",
+      "validated": true
+    },
+    "tenants.ck_tenants_service_not_byo_required": {
+      "def": "CHECK ((NOT (((kind)::text = 'service'::text) AND ((byo_mode)::text = 'byo_required'::text))))",
+      "type": "c",
+      "validated": true
+    },
+    "tenants.fk_tenants_owner": {
+      "def": "FOREIGN KEY (owner_key) REFERENCES tenant_owner(key) ON DELETE RESTRICT",
+      "type": "f",
+      "validated": true
+    },
+    "tenants.tenants_pkey": {
+      "def": "PRIMARY KEY (id)",
+      "type": "p",
+      "validated": true
+    },
+    "token.ck_token_granted_roles_allowlist": {
+      "def": "CHECK ((granted_roles <@ ARRAY['platform-admin'::text]))",
+      "type": "c",
+      "validated": true
+    },
+    "token.ck_token_granted_roles_short_lived": {
+      "def": "CHECK (((cardinality(granted_roles) = 0) OR ((expires_at IS NOT NULL) AND (expires_at <= (created_at + '01:05:00'::interval)))))",
+      "type": "c",
+      "validated": true
+    },
+    "token.ck_token_long_lived_registered": {
+      "def": "CHECK ((((long_lived_owner IS NULL) AND (long_lived_reason IS NULL)) OR ((expires_at IS NULL) AND (cardinality(granted_roles) = 0) AND (length(btrim(long_lived_owner)) > 0) AND (length(btrim(long_lived_reason)) > 0))))",
+      "type": "c",
+      "validated": true
+    },
+    "token.ck_token_token_type": {
+      "def": "CHECK ((token_type = ANY (ARRAY['api'::text, 'node'::text, 'internal'::text])))",
+      "type": "c",
+      "validated": true
+    },
+    "token.token_license_id_fkey": {
+      "def": "FOREIGN KEY (license_id) REFERENCES license(id) ON DELETE CASCADE",
+      "type": "f",
+      "validated": true
+    },
+    "token.token_pkey": {
+      "def": "PRIMARY KEY (id)",
+      "type": "p",
+      "validated": true
+    }
+  },
+  "extensions": [
+    "pgcrypto",
+    "plpgsql"
+  ],
+  "indexes": {
+    "api_client.api_client_pkey": {
+      "def": "CREATE UNIQUE INDEX api_client_pkey ON api_client USING btree (realm, client_id)",
+      "primary": true,
+      "unique": true
+    },
+    "app.app_key_key": {
+      "def": "CREATE UNIQUE INDEX app_key_key ON app USING btree (key)",
+      "primary": false,
+      "unique": true
+    },
+    "app.app_pkey": {
+      "def": "CREATE UNIQUE INDEX app_pkey ON app USING btree (id)",
+      "primary": true,
+      "unique": true
+    },
+    "app_issuer.app_issuer_pkey": {
+      "def": "CREATE UNIQUE INDEX app_issuer_pkey ON app_issuer USING btree (app_id, owner_key)",
+      "primary": true,
+      "unique": true
+    },
+    "app_requires.app_requires_pkey": {
+      "def": "CREATE UNIQUE INDEX app_requires_pkey ON app_requires USING btree (app_id, required_app_id)",
+      "primary": true,
+      "unique": true
+    },
+    "bundle.bundle_key_key": {
+      "def": "CREATE UNIQUE INDEX bundle_key_key ON bundle USING btree (key)",
+      "primary": false,
+      "unique": true
+    },
+    "bundle.bundle_pkey": {
+      "def": "CREATE UNIQUE INDEX bundle_pkey ON bundle USING btree (id)",
+      "primary": true,
+      "unique": true
+    },
+    "bundle_app.bundle_app_pkey": {
+      "def": "CREATE UNIQUE INDEX bundle_app_pkey ON bundle_app USING btree (bundle_id, app_id)",
+      "primary": true,
+      "unique": true
+    },
+    "bundle_app.idx_bundle_app_app": {
+      "def": "CREATE INDEX idx_bundle_app_app ON bundle_app USING btree (app_id)",
+      "primary": false,
+      "unique": false
+    },
+    "bundle_caller.bundle_caller_pkey": {
+      "def": "CREATE UNIQUE INDEX bundle_caller_pkey ON bundle_caller USING btree (bundle_id, owner_key, app_id)",
+      "primary": true,
+      "unique": true
+    },
+    "bundle_ensurer.bundle_ensurer_pkey": {
+      "def": "CREATE UNIQUE INDEX bundle_ensurer_pkey ON bundle_ensurer USING btree (bundle_id, owner_key)",
+      "primary": true,
+      "unique": true
+    },
+    "license.idx_license_app": {
+      "def": "CREATE INDEX idx_license_app ON license USING btree (app_id)",
+      "primary": false,
+      "unique": false
+    },
+    "license.idx_license_bundle": {
+      "def": "CREATE INDEX idx_license_bundle ON license USING btree (bundle_id)",
+      "primary": false,
+      "unique": false
+    },
+    "license.idx_license_expires_at": {
+      "def": "CREATE INDEX idx_license_expires_at ON license USING btree (expires_at)",
+      "primary": false,
+      "unique": false
+    },
+    "license.idx_license_status": {
+      "def": "CREATE INDEX idx_license_status ON license USING btree (status)",
+      "primary": false,
+      "unique": false
+    },
+    "license.idx_license_subject": {
+      "def": "CREATE INDEX idx_license_subject ON license USING btree (subject_id)",
+      "primary": false,
+      "unique": false
+    },
+    "license.license_pkey": {
+      "def": "CREATE UNIQUE INDEX license_pkey ON license USING btree (id)",
+      "primary": true,
+      "unique": true
+    },
+    "license.uq_license_active_tenant_app_subject": {
+      "def": "CREATE UNIQUE INDEX uq_license_active_tenant_app_subject ON license USING btree (tenant_id, app_id, subject_id) WHERE (status = 'active'::text)",
+      "primary": false,
+      "unique": true
+    },
+    "offering.idx_offering_app": {
+      "def": "CREATE INDEX idx_offering_app ON offering USING btree (app_id)",
+      "primary": false,
+      "unique": false
+    },
+    "offering.offering_pkey": {
+      "def": "CREATE UNIQUE INDEX offering_pkey ON offering USING btree (id)",
+      "primary": true,
+      "unique": true
+    },
+    "offering.ux_offering_app_code": {
+      "def": "CREATE UNIQUE INDEX ux_offering_app_code ON offering USING btree (app_id, code)",
+      "primary": false,
+      "unique": true
+    },
+    "plan.plan_pkey": {
+      "def": "CREATE UNIQUE INDEX plan_pkey ON plan USING btree (id)",
+      "primary": true,
+      "unique": true
+    },
+    "plan.ux_plan_app_code_region": {
+      "def": "CREATE UNIQUE INDEX ux_plan_app_code_region ON plan USING btree (app_id, code, COALESCE(region_id, '00000000-0000-0000-0000-000000000000'::uuid))",
+      "primary": false,
+      "unique": true
+    },
+    "realm_owner.realm_owner_pkey": {
+      "def": "CREATE UNIQUE INDEX realm_owner_pkey ON realm_owner USING btree (realm)",
+      "primary": true,
+      "unique": true
+    },
+    "region.region_code_key": {
+      "def": "CREATE UNIQUE INDEX region_code_key ON region USING btree (code)",
+      "primary": false,
+      "unique": true
+    },
+    "region.region_pkey": {
+      "def": "CREATE UNIQUE INDEX region_pkey ON region USING btree (id)",
+      "primary": true,
+      "unique": true
+    },
+    "subject.idx_subject_realm": {
+      "def": "CREATE INDEX idx_subject_realm ON subject USING btree (keycloak_realm)",
+      "primary": false,
+      "unique": false
+    },
+    "subject.idx_subject_tenant": {
+      "def": "CREATE INDEX idx_subject_tenant ON subject USING btree (tenant_id)",
+      "primary": false,
+      "unique": false
+    },
+    "subject.subject_keycloak_sub_key": {
+      "def": "CREATE UNIQUE INDEX subject_keycloak_sub_key ON subject USING btree (keycloak_sub)",
+      "primary": false,
+      "unique": true
+    },
+    "subject.subject_pkey": {
+      "def": "CREATE UNIQUE INDEX subject_pkey ON subject USING btree (id)",
+      "primary": true,
+      "unique": true
+    },
+    "tenant_app_byo_mode.idx_tenant_app_byo_mode_tenant": {
+      "def": "CREATE INDEX idx_tenant_app_byo_mode_tenant ON tenant_app_byo_mode USING btree (tenant_id)",
+      "primary": false,
+      "unique": false
+    },
+    "tenant_app_byo_mode.tenant_app_byo_mode_pkey": {
+      "def": "CREATE UNIQUE INDEX tenant_app_byo_mode_pkey ON tenant_app_byo_mode USING btree (tenant_id, app_id)",
+      "primary": true,
+      "unique": true
+    },
+    "tenant_app_grant.tenant_app_grant_pkey": {
+      "def": "CREATE UNIQUE INDEX tenant_app_grant_pkey ON tenant_app_grant USING btree (id)",
+      "primary": true,
+      "unique": true
+    },
+    "tenant_app_grant.uq_tenant_app_grant_active": {
+      "def": "CREATE UNIQUE INDEX uq_tenant_app_grant_active ON tenant_app_grant USING btree (tenant_id, grantee_owner_key) WHERE (revoked_at IS NULL)",
+      "primary": false,
+      "unique": true
+    },
+    "tenant_bundle.idx_tenant_bundle_bundle": {
+      "def": "CREATE INDEX idx_tenant_bundle_bundle ON tenant_bundle USING btree (bundle_id)",
+      "primary": false,
+      "unique": false
+    },
+    "tenant_bundle.tenant_bundle_pkey": {
+      "def": "CREATE UNIQUE INDEX tenant_bundle_pkey ON tenant_bundle USING btree (tenant_id, bundle_id)",
+      "primary": true,
+      "unique": true
+    },
+    "tenant_dependency_grant.tenant_dependency_grant_pkey": {
+      "def": "CREATE UNIQUE INDEX tenant_dependency_grant_pkey ON tenant_dependency_grant USING btree (tenant_id, owner_key, app_id)",
+      "primary": true,
+      "unique": true
+    },
+    "tenant_owner.tenant_owner_pkey": {
+      "def": "CREATE UNIQUE INDEX tenant_owner_pkey ON tenant_owner USING btree (key)",
+      "primary": true,
+      "unique": true
+    },
+    "tenants.ix_tenants_kind": {
+      "def": "CREATE INDEX ix_tenants_kind ON tenants USING btree (kind)",
+      "primary": false,
+      "unique": false
+    },
+    "tenants.ix_tenants_name": {
+      "def": "CREATE INDEX ix_tenants_name ON tenants USING btree (name)",
+      "primary": false,
+      "unique": false
+    },
+    "tenants.tenants_pkey": {
+      "def": "CREATE UNIQUE INDEX tenants_pkey ON tenants USING btree (id)",
+      "primary": true,
+      "unique": true
+    },
+    "tenants.uq_tenants_owner_external_ref": {
+      "def": "CREATE UNIQUE INDEX uq_tenants_owner_external_ref ON tenants USING btree (owner_key, external_ref) WHERE ((external_ref IS NOT NULL) AND (archived_at IS NULL))",
+      "primary": false,
+      "unique": true
+    },
+    "tenants.uq_tenants_owner_name": {
+      "def": "CREATE UNIQUE INDEX uq_tenants_owner_name ON tenants USING btree (owner_key, name) WHERE (archived_at IS NULL)",
+      "primary": false,
+      "unique": true
+    },
+    "token.idx_token_expires_at": {
+      "def": "CREATE INDEX idx_token_expires_at ON token USING btree (expires_at)",
+      "primary": false,
+      "unique": false
+    },
+    "token.idx_token_hash": {
+      "def": "CREATE INDEX idx_token_hash ON token USING btree (token_hash)",
+      "primary": false,
+      "unique": false
+    },
+    "token.idx_token_license": {
+      "def": "CREATE INDEX idx_token_license ON token USING btree (license_id)",
+      "primary": false,
+      "unique": false
+    },
+    "token.idx_token_revoked": {
+      "def": "CREATE INDEX idx_token_revoked ON token USING btree (revoked)",
+      "primary": false,
+      "unique": false
+    },
+    "token.token_pkey": {
+      "def": "CREATE UNIQUE INDEX token_pkey ON token USING btree (id)",
+      "primary": true,
+      "unique": true
+    },
+    "token.ux_token_license_hash": {
+      "def": "CREATE UNIQUE INDEX ux_token_license_hash ON token USING btree (license_id, token_hash)",
+      "primary": false,
+      "unique": true
+    }
+  },
+  "sequences": [],
+  "tables": [
+    "api_client",
+    "app",
+    "app_issuer",
+    "app_requires",
+    "bundle",
+    "bundle_app",
+    "bundle_caller",
+    "bundle_ensurer",
+    "license",
+    "offering",
+    "plan",
+    "realm_owner",
+    "region",
+    "subject",
+    "tenant_app_byo_mode",
+    "tenant_app_grant",
+    "tenant_bundle",
+    "tenant_dependency_grant",
+    "tenant_owner",
+    "tenants",
+    "token"
+  ]
+}

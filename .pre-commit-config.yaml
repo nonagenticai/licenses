@@ -1,0 +1,88 @@
+# Pre-commit hooks for artifact-service
+# Install: pre-commit install -t pre-commit -t pre-push
+# Run all: pre-commit run --all-files
+
+repos:
+  # Ruff - extremely fast Python linter (replaces flake8, isort, etc.)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.7
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--unsafe]  # Allow custom tags
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Dockerfile linting
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        # DL3008/DL3013: allow unpinned apt/pip.
+        # DL3025: the HEALTHCHECK is `curl -f … || exit 1` — the `||` REQUIRES a
+        #   shell, so JSON notation would break it. (Moot in prod anyway: k8s
+        #   uses the Deployment's probes, not the image HEALTHCHECK.)
+        # DL3066: `USER appuser` resolves to the uid 1000 created two lines
+        #   above by `useradd -m -u 1000`; switching to a bare numeric USER
+        #   would be a runtime change to a prod image for a cosmetic lint.
+        # Without these two the hook FAILS on an untouched Dockerfile, i.e.
+        # `pre-commit run --all-files` could never pass — a gate that cannot
+        # pass teaches everyone to ignore it.
+        args: [--ignore, DL3008, --ignore, DL3013, --ignore, DL3025, --ignore, DL3066]
+
+  # Secret detection is CI-side, not pre-commit: `.github/workflows/ci-public.yml` runs
+  # betterleaks over the whole tree and `scripts/ci/no-private-refs.sh` over every tracked
+  # file. A detect-secrets baseline is deliberately NOT used — the baseline suppressed
+  # accepted findings, and a suppression file in a public repo is a list nobody re-reads.
+  # `detect-private-key` above catches the obvious local case; the real net is
+  # tests/unit/test_no_committed_credentials.py, which runs in the unit suite.
+
+  # Type checking and tests - only on push (slower)
+  - repo: local
+    hooks:
+      - id: ty
+        name: ty type checking
+        # This repo has NO src/ layout — main.py/models.py/auth/ live at the
+        # root (pyproject: [tool.hatch.build.targets.wheel] packages = ["."]).
+        # The old `ty check src/` therefore checked nothing that exists, so the
+        # local pre-push hook has never type-checked this service. CI is
+        # unaffected: the shared archetype passes src_dir: "." (see
+        # .github/workflows/ci-cd.yaml) and runs ty correctly.
+        entry: uv run ty check .
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: pytest-unit
+        name: pytest unit tests
+        entry: uv run pytest tests/unit -v --tb=short -x
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: pip-audit
+        name: pip-audit security scan (uv-export → pip-audit)
+        entry: scripts/pip-audit.sh
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+# Configuration for ci environments
+ci:
+  autofix_prs: false
+  autoupdate_schedule: monthly

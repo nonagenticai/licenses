@@ -1,0 +1,24 @@
+{
+  "_meta": {
+    "consumer": "nonagenticai/billing-service",
+    "consumer_copy": "tests/support/licences_contract.json",
+    "covers": "GET /internal/licenses 200 response schema (response_sha256) and every components.schemas entry it transitively $refs (schema_sha256), read from docs/openapi.json",
+    "digest": "sha256 of json.dumps(schema, sort_keys=True, separators=(',', ':'), ensure_ascii=False)",
+    "on_failure": "The licences response billing mirrors changed. In billing-service: python3 tests/support/refresh_licences_contract.py (licenses as a sibling, after this change is on origin/main), commit with its .secrets.baseline update; then copy that file's _source.response_sha256 and _source.schema_sha256 here verbatim. Never update this file alone."
+  },
+  "response_sha256": "62e2b851335e00affb9e7a9e362f95ffd80576a229596d3fa27f28df2e70b8d6",
+  "schema_sha256": [
+    {
+      "schema": "AppInfo",
+      "sha256": "3a28c5c4d52271b310b7daa0874556ac783ef08f0b655f757fe38ce03b81b7d4"
+    },
+    {
+      "schema": "InternalLicenseResponse",
+      "sha256": "b8900dac42b739ef0b1f2885fdd7913153d3050b9edb2440d54b60d47ef89da2"
+    },
+    {
+      "schema": "PlanInfo",
+      "sha256": "e128e3af33b59c8aaa6bfc7746b29e1e0a448644b3bc0807bbfc7cf3b03f6664"
+    }
+  ]
+}

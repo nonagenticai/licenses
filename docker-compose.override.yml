@@ -1,0 +1,29 @@
+services:
+  licenses:
+    environment:
+      ENVIRONMENT: development
+      ENABLE_DOCS: "true"
+      DEFAULT_TENANT_ID: 0195f48b-d000-7000-8000-000000000001
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/licenses
+    depends_on:
+      - db
+    networks:
+      - default
+
+  db:
+    image: postgres:18-alpine
+    container_name: licenses-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: licenses
+    ports:
+      - "5447:5432"  # choose a free host port for local dev
+    volumes:
+      - licenses_db_data:/var/lib/postgresql/data
+    networks:
+      - default
+
+volumes:
+  licenses_db_data:

@@ -1,0 +1,120 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyc
+*.pyo
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# Environment variables
+.env
+.env.*
+.env.local
+!.env.example
+!.env.template
+
+# Certificates
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+certs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.sql
+# …but migrations MUST be tracked — the startup runner ships + applies them.
+!migrations/*.sql
+# …and so must their downgrades. This second exception is NOT redundant:
+# `!migrations/*.sql` does not match a subdirectory, so without this line
+# `migrations/downgrades/*.sql` stays swallowed by `*.sql` above and a downgrade
+# is silently absent from the commit that adds its migration — you only find out
+# when you need to roll back. The downgrades live one level down precisely
+# BECAUSE `apply_migrations.py` globs `migrations/*.sql` non-recursively: a
+# downgrade beside its migration would sort right after it and undo it on the
+# same boot.
+!migrations/downgrades/*.sql
+# …and so must test-fixture SQL. The schema-parity gate's genesis shim lives
+# here; without this exception it is silently absent in CI and the gate fails on
+# a missing input rather than on a real divergence.
+!tests/support/*.sql
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backup Files
+*.bak
+*.backup
+*.old
+*.orig
+*~
+
+# Temporary Files
+*.tmp
+
+# Testing
+.pytest_cache/
+
+# Poetry
+poetry.lock
+
+# Docker Compose Backups
+docker-compose*.yml.bak
+docker-compose*.yml.backup
+
+# Node.js (if applicable)
+node_modules/
+npm-debug.log
+yarn-error.log
+.local-ci-commit.txt
+.local-ci-push.txt
+coverage_html/
+
+# Generated files
+.coverage
+01_recent_push_failure.txt
+02_deploy_issues.txt
+
+# Local worktrees (git worktree add) — never tracked
+.worktrees/

@@ -1,0 +1,166 @@
+# CI for a PUBLIC repository — self-contained, GitHub-hosted runners.
+#
+# ⛔ Why this file replaces `.github/workflows/ci.yml` rather than extending it:
+#   1. A public repo CANNOT consume the estate archetype
+#      (the estate's private `python-service.yml` archetype): a public
+#      workflow cannot read a private repo. The run does not fail — it dies at startup with
+#      zero jobs.
+#   2. A public repo CANNOT use the ARC self-hosted pools (`allows_public_repositories:false`
+#      on both runner groups, and that must stay false: a fork PR can edit `runs-on`). A job
+#      that asks for one sits QUEUED forever with no error, invisible to check-failures.sh.
+#   3. GitHub-hosted standard runners are free and unlimited on public repos.
+#
+# ⛔ Every job is gated on `!github.event.repository.private`. The org's Actions billing is in
+#    a failed state, so a PRIVATE repo cannot start an ubuntu-latest job at all — it fails
+#    UNSTARTED (steps: [], startedAt == createdAt, no log). The gate lets this file land while
+#    the repo is private (jobs report "skipped", never red) and activate with zero edits at the
+#    flip. The consequence is load-bearing: CI CANNOT be verified before the flip, so the first
+#    real run is the one immediately after it.
+#
+# Nothing here needs a repository secret. The only token is the automatic one, used to push
+# an image from main.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+env:
+  UV_VERSION: "0.9.5"
+
+jobs:
+  secret-scan:
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: install betterleaks 1.10.1 (pinned, sha256-verified)
+        run: |
+          set -euo pipefail
+          version=1.10.1
+          sha=c174b42d7aa60caf58c0c3e555c0e4bed01fe6b0d99a412bce777b5af4ce913e
+          curl -fsSL -o "$RUNNER_TEMP/betterleaks.tgz" \
+            "https://github.com/betterleaks/betterleaks/releases/download/v${version}/betterleaks_${version}_linux_x64.tar.gz"
+          echo "${sha}  $RUNNER_TEMP/betterleaks.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/betterleaks.tgz" -C "$RUNNER_TEMP" betterleaks
+      - name: scan the tree
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/betterleaks" dir --redact --exit-code 1 --no-banner \
+            --config=.betterleaks.toml \
+            --gitleaks-ignore-path .betterleaksignore .
+
+  no-private-refs:
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: scan tracked files
+        run: bash scripts/ci/no-private-refs.sh
+
+  checks:
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Read by the test harness when it wants a database. The same two storage rules as
+      # the Rust variant: --shm-size (Postgres parallel workers, 53100 dsm_impl.c) and NO
+      # --tmpfs for the data directory (RAM-capped, 53100 md.c).
+      TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/postgres
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: start Postgres 18
+        run: |
+          set -euo pipefail
+          docker run -d --rm --name ci-pg \
+            -e POSTGRES_PASSWORD=postgres \
+            --shm-size=1g \
+            -p 127.0.0.1:5432:5432 \
+            postgres:18 -c fsync=off -c max_connections=300
+          for _ in $(seq 1 60); do
+            docker exec ci-pg pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1 && break
+            sleep 1
+          done
+          docker exec ci-pg pg_isready -h 127.0.0.1 -U postgres
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: install (locked)
+        run: uv sync --frozen
+
+      - name: ruff check
+        run: uv run ruff check .
+
+      - name: ruff format
+        run: uv run ruff format --check .
+
+      # The kit leaves type checking out of the shared gate — the tool and the paths are
+      # per-repo. THIS repo already gated types (the private archetype ran it, and so does
+      # the local pre-commit hook), so dropping it at the flip would be a silent quality
+      # regression. Same command the pre-commit hook runs.
+      - name: types (ty)
+        run: uv run ty check .
+
+      - name: pytest
+        run: uv run pytest -q
+
+      - name: pip-audit
+        run: |
+          set -euo pipefail
+          uv export --frozen --no-emit-project -o "$RUNNER_TEMP/requirements.txt"
+          uvx --from pip-audit pip-audit -r "$RUNNER_TEMP/requirements.txt"
+
+  # Build (and on main, publish) the image. OFF by default: enable per repo with the
+  # repository variable `PUBLISH_IMAGE=true`.
+  image:
+    if: ${{ !github.event.repository.private && vars.PUBLISH_IMAGE == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMG: app:ci
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: build
+        run: docker build --file Dockerfile --tag "$IMG" .
+
+      # The smoke command is per repo: set the repository variable `SMOKE_CMD`
+      # (e.g. `python -c "import main"`). Unset means no smoke, not a silent pass.
+      - name: smoke
+        if: ${{ vars.SMOKE_CMD != '' }}
+        run: |
+          set -euo pipefail
+          docker run --rm "$IMG" sh -c "${{ vars.SMOKE_CMD }}"
+
+      - name: push to ghcr.io (main only)
+        if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        run: |
+          set -euo pipefail
+          ref="ghcr.io/${{ github.repository }}"
+          echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          sha="sha-${GITHUB_SHA::7}"
+          run="$(printf 'main-%06d' "${{ github.run_number }}")"
+          for tag in "$sha" "$run" latest; do
+            docker tag "$IMG" "$ref:$tag"
+            docker push "$ref:$tag"
+          done
+          echo "pushed $ref:$sha $ref:$run $ref:latest"

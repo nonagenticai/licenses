@@ -1,0 +1,25 @@
+-- Downgrade 034. Drops `ck_tenants_cost_centre`. Schema-only — no row is read
+-- or written, so unlike a data migration's downgrade there is no scoping to get
+-- wrong; this simply removes the guard the upgrade added.
+--
+-- ⚠️ WHAT DOWNGRADING COSTS. Once dropped, `tenants.cost_centre` again accepts
+-- ANY string up to 64 characters, including a typo of an existing centre. That
+-- failure is silent and it is the reason 034 exists: `cost_centre` is a
+-- chargeback JOIN KEY, so a mistyped value does not error — it produces a
+-- chargeback bucket containing exactly one tenant, and the spend that should
+-- have landed in the real centre quietly does not appear there.
+--
+-- The Pydantic layer is NOT a substitute. `TenantCreate` / `TenantRegister` /
+-- `TenantUpdate` in main.py validate against the same vocabulary, but
+-- `scripts/provision_service_token.py` and any direct SQL write past them
+-- entirely — the CHECK is the only thing that constrains every writer. Only roll
+-- back if 034 itself is the problem.
+--
+-- The four deliberately-NULL rows (`default-anon`, `george-dekker`,
+-- `nonagentic`, `portal`) are untouched by both directions: the CHECK admits
+-- NULL, so dropping it changes nothing about them.
+--
+-- IF EXISTS-guarded, so a re-run (or a run against a database that never had 034
+-- applied) is a no-op.
+
+ALTER TABLE tenants DROP CONSTRAINT IF EXISTS ck_tenants_cost_centre;
