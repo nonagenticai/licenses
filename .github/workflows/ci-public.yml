@@ -101,8 +101,10 @@ jobs:
           version: ${{ env.UV_VERSION }}
           enable-cache: true
 
+      # --all-extras: `schemathesis` lives in the `contract` extra, and
+      # tests/contract/ deliberately hard-fails when CI is set and it is missing.
       - name: install (locked)
-        run: uv sync --frozen
+        run: uv sync --frozen --all-extras
 
       - name: ruff check
         run: uv run ruff check .
@@ -123,7 +125,7 @@ jobs:
       - name: pip-audit
         run: |
           set -euo pipefail
-          uv export --frozen --no-emit-project -o "$RUNNER_TEMP/requirements.txt"
+          uv export --frozen --all-extras --no-emit-project -o "$RUNNER_TEMP/requirements.txt"
           uvx --from pip-audit pip-audit -r "$RUNNER_TEMP/requirements.txt"
 
   # Build (and on main, publish) the image. OFF by default: enable per repo with the
@@ -145,11 +147,15 @@ jobs:
 
       # The smoke command is per repo: set the repository variable `SMOKE_CMD`
       # (e.g. `python -c "import main"`). Unset means no smoke, not a silent pass.
+      # The value goes through `env:` — interpolated inline it lands inside the shell's own
+      # double quotes and its inner quotes collapse.
       - name: smoke
         if: ${{ vars.SMOKE_CMD != '' }}
+        env:
+          SMOKE_CMD: ${{ vars.SMOKE_CMD }}
         run: |
           set -euo pipefail
-          docker run --rm "$IMG" sh -c "${{ vars.SMOKE_CMD }}"
+          docker run --rm "$IMG" sh -c "$SMOKE_CMD"
 
       - name: push to ghcr.io (main only)
         if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
