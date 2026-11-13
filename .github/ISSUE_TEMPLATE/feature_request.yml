@@ -1,0 +1,41 @@
+name: Feature request
+description: Propose a capability or a change in behaviour.
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For anything large, this issue is the place to agree on the shape before code is
+        written. One concern per issue.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you unable to do today, and why does it matter?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should happen instead. A sketch is enough.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds you tried, or a different design you rejected and why.
+    validations:
+      required: false
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What this would change, and what it deliberately would not.
+    validations:
+      required: false

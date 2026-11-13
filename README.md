@@ -1,5 +1,9 @@
 # Licenses
 
+[![CI](https://github.com/nonagenticai/licenses/actions/workflows/ci-public.yml/badge.svg)](https://github.com/nonagenticai/licenses/actions/workflows/ci-public.yml)
+[![Release](https://img.shields.io/github/v/release/nonagenticai/licenses)](https://github.com/nonagenticai/licenses/releases)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 A licensing service that manages application entitlements, plans, and API tokens for the nonagentic.ai platform. Port 8544.
 
 | | |
@@ -310,7 +314,7 @@ docker run -p 8544:8544 -e LOG_LEVEL=DEBUG -e DATABASE_URL=postgresql+psycopg://
 
 ## Dependencies
 
-- **PostgreSQL 18** — persistent storage via PgBouncer (pgbouncer.pgbouncer.svc.cluster.local:6432)
+- **PostgreSQL 18** — persistent storage via PgBouncer (pgbouncer:6432)
 - **Keycloak** — identity provider (`auth.nonagentic.ai`) for JWT validation and realm roles. It runs **in-cluster** (Deployment `keycloak/keycloak`, verified live 2026-08-17); the "VPS-only" this line used to carry has been wrong since the 2026-04-07 migration. The public hostname is fronted by Cloudflare, which is why JWKS fetches must send a browser `User-Agent` — see `auth/jwt_verify.py`
 - **Istio ext_authz** — calls `/license/introspect` on every mesh request for token validation
 - **FastAPI** — web framework
@@ -324,6 +328,18 @@ docker run -p 8544:8544 -e LOG_LEVEL=DEBUG -e DATABASE_URL=postgresql+psycopg://
 - **Schemathesis contract tests never ran** — the previous wording ("temporarily disabled in CI, `continue-on-error` commented out") implied a step that exists and is switched off. There is no such step: `schemathesis` appears nowhere in `.github/workflows/`, and `tests/contract/` holds only `schemathesis_hooks.py` and `__init__.py` — no test files. The dependency is declared in `pyproject.toml`; nothing invokes it.
 - **No src/ directory** — app code lives at repo root (`main.py`, `models.py`, `auth/`) rather than under `src/`. Ruff config targets these paths directly.
 - **services/ package empty** — `services/__init__.py` exists but contains no code. Reserved for future extraction of business logic from `main.py`.
+
+## Security
+
+Report vulnerabilities privately through the repository's Security tab — see
+[`SECURITY.md`](SECURITY.md). Do not open a public issue for a security problem.
+
+## Contributing
+
+Issues and pull requests are welcome. See
+[`CONTRIBUTING.md`](https://github.com/nonagenticai/.github/blob/main/CONTRIBUTING.md) for the
+organisation-wide rules; setup, test and lint commands are in this README. Commits carry DCO
+sign-off.
 
 ## License
 

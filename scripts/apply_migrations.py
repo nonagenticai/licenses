@@ -239,7 +239,7 @@ def _with_lock_timeout(stmt: str, timeout_ms: int) -> str:
 
     WHY PER STATEMENT AND NOT ONCE PER SESSION. Production reaches this database
     through **pgbouncer in transaction pooling mode** (``DATABASE_URL`` is
-    ``pgbouncer.pgbouncer.svc.cluster.local:6432``). There, a server connection is
+    ``pgbouncer:6432``). There, a server connection is
     assigned per TRANSACTION, and this runner is autocommit — so every statement
     is its own transaction and may land on a different backend. A session-level
     ``SET`` would therefore govern an arbitrary subset of the run and, worse, leak

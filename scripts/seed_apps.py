@@ -432,7 +432,7 @@ APPS: list[dict[str, Any]] = [
         # for live human takeover, each a future self-metering caller of
         # inference-router (sends no `X-App-Id` today — see the description
         # below) (`INFERENCE_ROUTER_URL`, default in-cluster
-        # inference-router.inference-router.svc.cluster.local:8150). No `app`
+        # inference-router:8150). No `app`
         # row existed for any of the three as of 2026-09-10 (licenses census:
         # 52 app rows, zero matches), so none could set `APP_ID` at all.
         #
