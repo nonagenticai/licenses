@@ -124,6 +124,39 @@ uv run ruff check main.py models.py auth/ tests/ && uv run ruff format --check m
 | GET | `/health/live` | Liveness probe |
 | GET | `/health/ready` | Readiness probe (checks DB connectivity) |
 
+## Integrating: calling the licence service from another application
+
+Any service that gates a feature on a licence calls **one HTTP endpoint**. There is no SDK to
+vendor and nothing to copy into your tree.
+
+```http
+POST $LICENSE_INTROSPECT_URL/license/introspect
+Content-Type: application/json
+
+{"token": "<the opaque licence token your caller presented>"}
+```
+
+```json
+{"active": true, "tenant_id": "...", "license_id": "...", "subject_id": "...",
+ "subject_keycloak_sub": "...", "plan": "...", "byo_mode": false}
+```
+
+- **The token in the body is the credential.** The endpoint takes no API key or client secret; the
+  deployment-level `INTROSPECT_REQUIRE_AUTH` flag can additionally require a bearer from
+  non-loopback callers. Set `LICENSE_INTROSPECT_URL` from your own deployment config — never a
+  literal hostname in source.
+- **`active` is the only thing that grants.** `tenant_id` is the identity an ext_authz enforcer
+  forwards downstream as `X-Tenant-Id`. `license_id`, `subject_id` and `subject_keycloak_sub`
+  identify; they grant nothing.
+- **A client-side check is not the control.** Plans, entitlements and RBAC are enforced here,
+  server-side. A check copied into a consumer can be deleted by whoever runs it — treat it as UX,
+  never as the thing that protects a paid feature.
+- **Do not fork the middleware.** `auth/middleware.py` in this repository is the reference
+  consumer for a Python service. A per-service copy drifts from the contract while looking
+  identical; if it lacks behaviour you need, change it here.
+- **Timeouts and failure policy are the caller's.** A licence-service blip must not cascade; decide
+  in your service whether an unreachable introspection means "deny" and for how long.
+
 ## Configuration
 
 All configuration via environment variables.
