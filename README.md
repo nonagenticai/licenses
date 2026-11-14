@@ -341,6 +341,17 @@ Issues and pull requests are welcome. See
 organisation-wide rules; setup, test and lint commands are in this README. Commits carry DCO
 sign-off.
 
+## Licensing
+
+This repository **is** the licensing service: entitlements, plans and API tokens. The rest of
+the platform treats it as optional — every service integrates the licence gate opt-in, and an
+unset switch means no enforcement and no call to this service. A clone of the platform runs
+end to end without it.
+
+The enforcement point is a separate public repository,
+[`license-authz`](https://github.com/nonagenticai/license-authz) (the Envoy `ext_authz`
+service that calls this API). Apache-2.0 covers the code; running it requires no licence key.
+
 ## License
 
 Apache 2.0 — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
