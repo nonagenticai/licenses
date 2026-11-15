@@ -20,7 +20,7 @@ Behind the introspection endpoint, the service manages a hierarchy of domain obj
 
 No PII is stored anywhere in this service. Identity is handled entirely by Keycloak -- the only user reference kept is the opaque `keycloak_sub` UUID in the Subject table. All primary keys use UUIDv7, which embeds a timestamp for natural ordering. The service exposes CRUD endpoints for apps, plans, licenses, regions, and tokens, all tenant-scoped and protected by a role-based access control system with three tiers: license-admin (full CRUD), license-manager (create and revoke), and license-reader (read-only plus token regeneration).
 
-The service is stateless in its application tier — all state lives in PostgreSQL via PgBouncer. It runs as a Kubernetes Deployment behind a ClusterIP Service on port 8544, so it is reachable only from inside the cluster (or wherever your gateway puts it). The only publicly callable endpoint is `/license/introspect`, which requires no authentication because the token itself is the credential being validated.
+The service is stateless in its application tier — all state lives in PostgreSQL via PgBouncer. It runs as a Kubernetes Deployment behind a ClusterIP Service on port 8544, so it is reachable only from inside the cluster (or wherever your gateway puts it). The public endpoints are `/health`, its `/licenses/health` alias, and `/license/introspect`; introspection takes no bearer credential because the token in the body is what is being validated (`main.py`).
 
 ## Features
 
@@ -65,12 +65,83 @@ Health endpoints (`/health`, `/health/*`), docs (`/docs`, `/redoc`, `/openapi.js
 
 ## Quick Start
 
+Prerequisites: [uv](https://docs.astral.sh/uv/) (it installs the pinned Python 3.14 toolchain) and
+either Docker or an existing PostgreSQL 18.
+
+1. **Start a throwaway PostgreSQL 18.** There is no separate schema step: on startup the service
+   creates missing tables, runs the SQL migration runner in `migrations/` (a fresh database is
+   baselined from `models.py` — the startup log says so), and seeds the platform tenants
+   (`main.py::_run_db_bootstrap`). The container publishes the same port internally and
+   externally.
+
 ```bash
-uv sync
-uv run uvicorn main:app --host 0.0.0.0 --port 8544
-uv run pytest tests/ -v
-uv run ruff check main.py models.py auth/ tests/ && uv run ruff format --check main.py models.py auth/ tests/
+docker run -d --rm --name licenses-pg \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=licenses \
+  --shm-size=1g \
+  -p 127.0.0.1:55433:55433 \
+  postgres:18 -c port=55433 -c fsync=off
 ```
+
+2. **Install the locked dependency set.**
+
+```bash
+git clone https://github.com/nonagenticai/licenses.git
+cd licenses
+uv sync --frozen
+```
+
+3. **Start the service.** `DATABASE_URL` has no default — without it the process exits at import
+   with `RuntimeError: licenses-service: DATABASE_URL is not set`. `ENVIRONMENT=development` is
+   also required for a bare local run: the default `production` refuses to start until
+   `METERING_SERVICE_URL` and `CORS_ALLOWED_ORIGINS` are set as well (`main.py`).
+
+```bash
+export DATABASE_URL='postgresql+psycopg://postgres:postgres@127.0.0.1:55433/licenses?sslmode=disable'
+export ENVIRONMENT=development
+uv run uvicorn main:app --host 0.0.0.0 --port 8544
+```
+
+4. **Verify that boot completed and the database is reachable.**
+
+```bash
+curl -s http://127.0.0.1:8544/health/ready
+# {"status":"ready","database":"connected"}
+```
+
+`/health` is a cheap process check that deliberately does not touch the database; `/health/ready`
+is the endpoint that proves the schema work finished. In development, Swagger UI is at
+`http://127.0.0.1:8544/docs`.
+
+The management API (`/apps`, `/plans`, `/licenses`, …) needs a Keycloak-issued JWT carrying
+`license-admin`, or an opaque licence token (which grants `license-reader`). A bare local run has
+no Keycloak, so use the test suite below to exercise those routes, or point `KEYCLOAK_URL` at a
+realm. `ENABLE_AUTH=false` is not a local bypass: it removes the middleware, and the role-gated
+routes then answer 401 because nothing populated `request.state.user` (`auth/dependencies.py`).
+
+## Usage
+
+The endpoint other services call is `POST /license/introspect`. The token in the body is the
+credential; no bearer is required unless `INTROSPECT_REQUIRE_AUTH=true`.
+
+```bash
+curl -sS -X POST http://127.0.0.1:8544/license/introspect \
+  -H 'Content-Type: application/json' \
+  -d '{"token":"not-a-real-token"}'
+```
+
+Abridged response (the full schema is `TokenIntrospectResponse` in `main.py`):
+
+```json
+{"active": false, "reason": "token_not_found", "tenant_id": null, "license_id": null,
+ "subject_id": null, "subject_keycloak_sub": null, "byo_mode": null, "app": null,
+ "plan": null, "status": null, "expires_at": null}
+```
+
+A live token returns `"active": true` and fills in the identity fields (`tenant_id`, `license_id`,
+`subject_id`, `subject_keycloak_sub`, `app`, `plan`, `byo_mode`, `status`, `expires_at`, …). The
+full response model is `TokenIntrospectResponse` in `main.py`; the **Integrating** section below
+is the contract for a caller.
 
 ## API Endpoints
 
@@ -120,9 +191,9 @@ uv run ruff check main.py models.py auth/ tests/ && uv run ruff format --check m
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/health` | Full health check with DB status |
+| GET | `/health` | Process liveness. Deliberately does **not** touch the database; reports `database: "not_checked"` |
 | GET | `/health/live` | Liveness probe |
-| GET | `/health/ready` | Readiness probe (checks DB connectivity) |
+| GET | `/health/ready` | Readiness probe: boot/schema completed and `SELECT 1` succeeds (503 otherwise) |
 
 ## Integrating: calling the licence service from another application
 
@@ -148,9 +219,10 @@ Content-Type: application/json
 - **`active` is the only thing that grants.** `tenant_id` is the identity an ext_authz enforcer
   forwards downstream as `X-Tenant-Id`. `license_id`, `subject_id` and `subject_keycloak_sub`
   identify; they grant nothing.
-- **A client-side check is not the control.** Plans, entitlements and RBAC are enforced here,
-  server-side. A check copied into a consumer can be deleted by whoever runs it — treat it as UX,
-  never as the thing that protects a paid feature.
+- **A client-side check is not the control.** Plans, entitlements and RBAC are decided
+  server-side, and the authoritative entitlement answer comes from this service. A check copied
+  into a consumer can be deleted by whoever runs it — treat it as UX, never as the thing that
+  protects a paid feature.
 - **Do not fork the middleware.** `auth/middleware.py` in this repository is the reference
   consumer for a Python service. A per-service copy drifts from the contract while looking
   identical; if it lacks behaviour you need, change it here.
@@ -163,26 +235,35 @@ All configuration via environment variables.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `8544` | Server port |
-| `DATABASE_URL` | **required — no default** | SQLAlchemy connection string. Unset ⇒ the service refuses to start (`RuntimeError` naming `DATABASE_URL`). In the cluster it comes from the `licenses-env` Secret. |
-| `POSTGRES_SSLMODE` | `require` | SSL mode for PostgreSQL |
-| `SERVICE_NAME` | `licensing-service` | Service identifier |
-| `VERSION` | `1.0.0` | Application version |
-| `ENVIRONMENT` | `production` | Environment name (set to `development` to auto-enable docs) |
-| `ENABLE_DOCS` | `false` | Explicitly enable Swagger UI and ReDoc |
-| `ENABLE_AUTH` | `true` | Enable/disable auth middleware entirely |
-| `LOG_LEVEL` | `INFO` | Logging level |
-| `REALM_NAME` | `secure-apps` | Keycloak realm name |
-| `KEYCLOAK_URL` | `https://keycloak.example.com` | Keycloak server URL |
-| `KEYCLOAK_REALM` | `secure-apps` | Keycloak realm |
-| `SERVICE_CLIENT_ID` | *(empty)* | Client id of the **outbound** service account (`service_auth.py`, client-credentials grant) |
-| `SERVICE_CLIENT_SECRET` | *(empty)* | Secret for that service account |
-| `SERVICE_TOKEN_URL` | *(empty)* | Explicit token endpoint for the service account. Empty → derived from `KEYCLOAK_URL` + `KEYCLOAK_REALM`. Production sets it, because the SA client lives in `secure-apps` while `KEYCLOAK_REALM` points elsewhere |
-| `KEYCLOAK_TRUSTED_ISSUERS` | *(empty)* | Comma-separated issuer allowlist for **inbound** JWT verification. Empty → derived as `KEYCLOAK_URL` + the `portal` and `secure-apps` realms (`auth/jwt_verify.py`) |
+| `PORT` | `8544` | Port the auth middleware uses for its own loopback `POST /license/introspect`. The listening port is uvicorn's `--port`; keep the two equal (`auth/middleware.py`). |
+| `DATABASE_URL` | **required — no default** | SQLAlchemy connection string. Unset ⇒ the process exits at import with `RuntimeError` naming `DATABASE_URL`. In the cluster it comes from the `licenses-env` Secret (`main.py`, `models.py`). |
+| `POSTGRES_SSLMODE` | `require` | SSL mode appended to `DATABASE_URL`. An `sslmode` already present in the DSN wins and is not duplicated (`models.py`). |
+| `SERVICE_NAME` | `licensing-service` | Service identifier reported by `/health`. |
+| `VERSION` | `1.0.0` | Version reported by `/health`. |
+| `ENVIRONMENT` | `production` | Set to `development` for a local run: it enables docs and skips the production-required env check. In `production`, `METERING_SERVICE_URL`, `CORS_ALLOWED_ORIGINS` and `DATABASE_URL` must be set (`main.py`). |
+| `ENABLE_DOCS` | `false` | Force Swagger UI and ReDoc on; `ENVIRONMENT=development` also enables them. |
+| `ENABLE_AUTH` | `true` | Install the auth middleware. Unset ⇒ enabled. Disabling it is not an auth bypass — role-gated routes still return 401 (`auth/dependencies.py`). |
+| `INTROSPECT_REQUIRE_AUTH` | `false` | Require a bearer on `POST /license/introspect` from non-loopback callers. Unset ⇒ off; the token in the body is the credential. |
+| `LICENSE_SOFT_DELETE` | `true` | `DELETE /licenses/user/{subject_id}` stamps rows instead of destroying them. Set `false` for the historical hard delete (`main.py`). |
+| `LOG_LEVEL` | `INFO` | Logging level. |
+| `REALM_NAME` | `secure-apps` | Fallback realm label when a verified token has no `iss` claim (`main.py`). |
+| `KEYCLOAK_URL` | *(empty)* | Keycloak base URL. Used for inbound issuer/JWKS discovery and the outbound service account; `auth/config.py` refuses to construct settings without it when `ENVIRONMENT=production`. |
+| `KEYCLOAK_REALM` | `secure-apps` | Realm used to derive the outbound service-account token URL when `SERVICE_TOKEN_URL` is empty. It is **not** used for inbound JWT verification (`auth/config.py`). |
+| `SERVICE_CLIENT_ID` | *(empty)* | Client id of the **outbound** service account (`service_auth.py`, client-credentials grant). |
+| `SERVICE_CLIENT_SECRET` | *(empty)* | Secret for that service account. |
+| `SERVICE_TOKEN_URL` | *(empty)* | Explicit token endpoint for the service account. Empty → derived from `KEYCLOAK_URL` + `KEYCLOAK_REALM`. Production sets it, because the SA client lives in `secure-apps` while `KEYCLOAK_REALM` points elsewhere. |
+| `KEYCLOAK_TRUSTED_ISSUERS` | *(empty)* | Comma-separated issuer allowlist for **inbound** JWT verification. Empty → derived as `KEYCLOAK_URL` + the `portal` and `secure-apps` realms (`auth/jwt_verify.py`). |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000`, `https://localhost:3000`, `http://localhost:8008`, `https://localhost:8008`, `http://localhost:8687`, `https://localhost:8687` | Comma-separated CORS origins. The localhost list is development-only; production must set this explicitly (`main.py`). |
+| `METERING_SERVICE_URL` | *(empty)* | Metering/billing service used to tear down quota and token-budget rows. Required in production; unset in development means those teardown calls are skipped with a log line (`services/metering_teardown.py`). |
 
 > **`KEYCLOAK_CLIENT_ID`, `KEYCLOAK_CLIENT_SECRET`, `KEYCLOAK_SSL_VERIFY` and `CA_CERT_PATH` used to be listed here. No line of this service reads them.** Their only consumer was `auth/validator.py`, deleted in PR #140; the `auth/config.py` members behind them were deleted alongside this note. Production never set them either — the `licenses-env` secret holds exactly `DATABASE_URL`, `POSTGRES_SSLMODE`, `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `SERVICE_CLIENT_ID`, `SERVICE_CLIENT_SECRET`, `SERVICE_TOKEN_URL` (verified live 2026-08-17). They survive only in `docker-compose.yml` and `test-keycloak.sh`, which drive a **local** Keycloak stack and read them from the shell, so those two files still set them on purpose. `tests/unit/test_config_surface_is_consumed.py` now fails if unread configuration surface reappears.
 
+`DEFAULT_TENANT_ID` is also a no-op: it decorated only a published OpenAPI parameter and is read by no request path (`main.py`), so it can be dropped from a deployment.
+
 ## Architecture
+
+App code lives at the repository root (`main.py`, `models.py`, `auth/`, `services/`), not under
+`src/`.
 
 ```
 main.py                            # FastAPI app, all routes, Pydantic request/response models
@@ -196,18 +277,23 @@ auth/
 ├── models.py                      # User Pydantic model with role checks
 ├── tenant.py                      # Tenant ID extraction from trusted headers or JWT sub
 services/
-└── __init__.py                    # Empty (reserved for future service extraction)
-scripts/                           # 22 operator scripts, NOT the 4 once listed here. Four groups:
+├── access_log.py                  # One structured access-log line per request, keyed on the caller
+├── app_requires.py                # Transitive app-dependency closure used by bundles
+├── bundle_ensure.py               # Per-app licence provisioning for a tenant bundle
+├── expiry_metrics.py              # Prometheus expiry gauges
+├── metering_teardown.py           # Quota / token-budget teardown on revoke
+└── tenant_subject_invariant.py    # Boot-time tenant-vs-subject identity report
+scripts/                           # Operator scripts: migrations, seeding, provisioning, reconciliation, CI
 ├── apply_migrations.py            #   migrations — apply_migrations, build_schema_arms, dump_schema
 ├── seed_*.py / provision_*.py     #   seeding + tenant/token provisioning (fr, kag, w2v, portal, n8n-dev)
 ├── audit_*.py / reconcile_*.py    #   reconciliation — orphan tenants, metering, stale licence expiry
-└── pip-audit.sh, export-openapi.py, setup-dev.sh, openapi_env.py
+└── ci/, pip-audit*.sh, export-openapi.py, setup-dev.sh, openapi_env.py
 tests/
 ├── conftest.py                    # Shared fixtures (test client, DB mocks)
-├── unit/                          # 51 unit test modules
-├── integration/                   # 6 integration test modules (marked, excluded by default)
-├── auth/                          # 7 auth-specific test modules
-└── contract/                      # Schemathesis hooks — NO test files yet; nothing in CI invokes them
+├── unit/                          # Unit tests
+├── integration/                   # Integration tests (marked, excluded by default)
+├── auth/                          # Auth middleware and RBAC tests
+└── contract/                      # Response-schema validation via Schemathesis (runs in CI)
 ```
 
 ## Data Models
@@ -223,15 +309,17 @@ All tables use UUIDv7 primary keys.
 | **License** | subject_id, app_id, plan_id, tenant_id, status, expires_at | A subject's entitlement with status lifecycle |
 | **Token** | license_id, token_hash (SHA-256), token_type, expires_at, last_used_at | API token bound to a license, raw token never stored |
 
-## Testing
+## Development
 
 ```bash
-uv run pytest tests/ -v   # Unit + auth tests (excludes integration by default)
-uv run pytest tests/unit/ -v                                   # Unit tests only
-uv run pytest tests/integration/ -v -m integration             # Integration tests (TestClient + Postgres; live cluster only with LICENSES_URL)
-uv run pytest tests/auth/ -v                                   # Auth middleware and RBAC tests
-uv run ruff check main.py models.py auth/ tests/              # Lint
-uv run ruff format --check main.py models.py auth/ tests/     # Format check
+uv sync --frozen --all-extras          # includes the `contract` extra (Schemathesis)
+uv run ruff check .                    # Lint (what CI runs)
+uv run ruff format --check .           # Format check (what CI runs)
+uv run ty check .                      # Type check (what CI runs)
+uv run pytest -q                       # Unit + auth + contract; integration excluded by default
+uv run pytest tests/unit/ -q           # Unit tests only
+uv run pytest tests/auth/ -q           # Auth middleware and RBAC tests
+uv run pytest tests/integration/ -q -m integration   # Integration tests (TestClient + Postgres; live cluster only with LICENSES_URL)
 ```
 
 **Test database** (`tests/support/ephemeral_postgres.py`): `TEST_DATABASE_URL` →
@@ -239,9 +327,6 @@ uv run ruff format --check main.py models.py auth/ tests/     # Format check
 `127.0.0.1` port) is started for the session and removed by its own id afterwards,
 pass or fail. No docker and no URL ⇒ the run exits with a message. There is **no**
 `localhost:5432`/`5447` default — never point tests at a host Postgres.
-
-Coverage threshold: **42%** (`fail_under` in `pyproject.toml`). This line claimed 80% while the
-gate was set to 42 — read the value from `pyproject.toml`, not from here.
 
 ## Provisioning the demo tenant
 
@@ -308,9 +393,15 @@ per repository (the `PUBLISH_IMAGE` repository variable); when enabled, `main` p
 
 ```bash
 docker build -t licenses .
-docker run -p 8544:8544 licenses
-docker run -p 8544:8544 -e LOG_LEVEL=DEBUG -e DATABASE_URL=postgresql+psycopg://user:pass@host:5432/licenses -e ENABLE_AUTH=false -e ENABLE_DOCS=true licenses
+docker run --rm -p 8544:8544 \
+  -e DATABASE_URL='postgresql+psycopg://user:pass@db-host:5432/licenses?sslmode=disable' \
+  -e ENVIRONMENT=development \
+  licenses
 ```
+
+The image's `CMD` listens on 8544. `ENVIRONMENT=development` is used above so a plain container
+start needs only `DATABASE_URL`; for production, set `DATABASE_URL`, `POSTGRES_SSLMODE`,
+`KEYCLOAK_URL`, `METERING_SERVICE_URL` and `CORS_ALLOWED_ORIGINS` (`Dockerfile`, `main.py`).
 
 ## Dependencies
 
@@ -323,12 +414,6 @@ docker run -p 8544:8544 -e LOG_LEVEL=DEBUG -e DATABASE_URL=postgresql+psycopg://
 - **SQLAlchemy 2.0** — sync ORM with psycopg3 driver
 - **PyJWT** — JWT signature/expiry/issuer verification in the auth middleware (`auth/jwt_verify.py`: JWKS, `kid`-matched, issuer pinned against the trusted-issuer allowlist)
 
-## Known Issues
-
-- **Schemathesis contract tests never ran** — the previous wording ("temporarily disabled in CI, `continue-on-error` commented out") implied a step that exists and is switched off. There is no such step: `schemathesis` appears nowhere in `.github/workflows/`, and `tests/contract/` holds only `schemathesis_hooks.py` and `__init__.py` — no test files. The dependency is declared in `pyproject.toml`; nothing invokes it.
-- **No src/ directory** — app code lives at repo root (`main.py`, `models.py`, `auth/`) rather than under `src/`. Ruff config targets these paths directly.
-- **services/ package empty** — `services/__init__.py` exists but contains no code. Reserved for future extraction of business logic from `main.py`.
-
 ## Security
 
 Report vulnerabilities privately through the repository's Security tab — see
@@ -336,21 +421,39 @@ Report vulnerabilities privately through the repository's Security tab — see
 
 ## Contributing
 
-Issues and pull requests are welcome. See
-[`CONTRIBUTING.md`](https://github.com/nonagenticai/.github/blob/main/CONTRIBUTING.md) for the
-organisation-wide rules; setup, test and lint commands are in this README. Commits carry DCO
-sign-off.
+Issues and pull requests are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for this
+repository's setup, test and DCO sign-off rules; the organisation-wide rules live in
+[`nonagenticai/.github/CONTRIBUTING.md`](https://github.com/nonagenticai/.github/blob/main/CONTRIBUTING.md).
+Commits carry DCO sign-off.
 
 ## Licensing
 
-This repository **is** the licensing service: entitlements, plans and API tokens. The rest of
-the platform treats it as optional — every service integrates the licence gate opt-in, and an
-unset switch means no enforcement and no call to this service. A clone of the platform runs
-end to end without it.
+This repository **is** the licensing service: it stores entitlements, plans and API tokens, and
+answers introspection questions. It is not an inline enforcement proxy, and there is no
+platform-wide switch inside it that turns licensing on or off.
 
-The enforcement point is a separate public repository,
-[`license-authz`](https://github.com/nonagenticai/license-authz) (the Envoy `ext_authz`
-service that calls this API). Apache-2.0 covers the code; running it requires no licence key.
+**What it enforces on its own API.** Authentication is controlled by `ENABLE_AUTH` (**default
+`true`**; `main.py`). Unset means the auth middleware is installed, so protected routes require a
+verified Keycloak JWT or an opaque licence token, with the route's role check applied on top. The
+one public route that answers entitlement questions, `POST /license/introspect`, is governed
+separately by `INTROSPECT_REQUIRE_AUTH` (**default `false`**; `main.py`). Unset means no bearer is
+required from non-loopback callers — the token in the request body is the credential being
+validated. Setting `ENABLE_AUTH=false` removes the middleware but is **not** a local auth bypass:
+the role-gated routes still return 401 because nothing populated `request.state.user`
+(`auth/dependencies.py`).
+
+**What it does for its callers.** This service enforces nothing on a caller's traffic. It answers
+`active: true` or `active: false`; the caller decides what that answer means, and a caller that
+ignores it is not protected by this repository. The reference enforcement point is the separate
+public repository [`license-authz`](https://github.com/nonagenticai/license-authz), the Envoy
+`ext_authz` service that calls this API.
+
+**The opt-in switch is in the caller.** Each service that wants licence enforcement carries its
+own boolean and defaults to off — for example, care-bus does nothing unless
+`LICENSE_GATE_2_ENABLED=true` (`crates/carebus-api/src/licence.rs` in `care-bus-agents`), and w2v
+uses `W2V_LICENSE_GATE_ENABLED`. When such a switch is unset, that caller makes no introspection
+call and enforces nothing, so a clone of the platform runs end to end without this service.
+Apache-2.0 covers the code; running it requires no licence key.
 
 ## License
 
