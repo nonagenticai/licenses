@@ -53,7 +53,7 @@ import asyncio
 import gc
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -649,7 +649,10 @@ class TestSessionIsNotHeldAcrossTheHttpPushes:
 
         raised = [r.exc_info for r in loud if r.exc_info is not None]
         assert raised, "the swallow must log the traceback, or the cause is unrecoverable"
-        original = raised[0][1]
+        # ty 0.0.104 mis-infers `LogRecord.exc_info` filtered for non-None as `Literal[False]`
+        # and refuses the subscript; the assertion above plus the filter make the runtime value
+        # the 3-tuple sys.exc_info() returns. Cast rather than suppress, so the intent is typed.
+        original = cast("tuple[Any, BaseException, Any]", raised[0])[1]
         assert isinstance(original, RuntimeError) and "NullPool connect refused" in str(original), (
             "the logged exception is not the one that was raised — something in the "
             f"cleanup path masked it: {original!r}"
