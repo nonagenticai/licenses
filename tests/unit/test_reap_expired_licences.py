@@ -667,6 +667,32 @@ class TestTheAuditLine:
         reap_expired_licences.main_cli([])
         assert _one_json_line(capsys)["actor"] == "cronjob:reap-expired-licences"
 
+    def test_the_audit_line_names_the_licence_and_never_its_token(self, cli_db, estate, capsys):
+        """The basis of the py/clear-text-logging-sensitive-data dismissals (lines 769/771).
+
+        CodeQL flags the line because the TEARDOWN HELPER'S NAME contains "billing" and its
+        ``maybePrivate`` heuristic treats that as financial data. What actually reaches the
+        line is a LICENCE UUID — ``reap_all_expired_licenses()`` returns ids — and the
+        credential is a separate ``token`` row this CronJob never selects. Both halves are
+        pinned here: the identifier survives, and a real token on that same licence does
+        not. Deleting the identifier instead ("fixing" the alert by deleting the audit
+        trail) fails the first assertion; leaking the token fails the second.
+        """
+        licence = estate["ancient_expired"]
+        _token, raw = cli_db.create_token(UUID(str(licence.id)))
+        assert raw, "a leak scan with no secret in the fixture proves nothing"
+        assert raw not in str(licence.id)
+
+        reap_expired_licences.main_cli([])
+
+        payload = _one_json_line(capsys)
+        rendered = json.dumps(payload, sort_keys=True, default=str)
+        assert payload["selected_license_ids"] == [str(licence.id)], payload
+        assert str(licence.id) in payload["reason"], (
+            f"the licence id is what makes this line useful: {payload}"
+        )
+        assert raw not in rendered, "the licence TOKEN must never reach the audit line"
+
 
 class TestItStartsUnderTheCronJobsRealEnvironment:
     def test_without_a_database_url_it_reports_a_config_failure(self, monkeypatch, capsys):

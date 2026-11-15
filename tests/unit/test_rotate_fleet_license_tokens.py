@@ -410,6 +410,44 @@ class TestNothingEverPrintsATokenValue:
         assert not OLD_A.startswith(fp)
         assert len(fp) == 12
 
+    def test_a_malformed_bundle_names_the_target_and_never_its_contents(self, monkeypatch, capsys):
+        """The basis of the py/clear-text-logging-sensitive-data dismissal at line 1096.
+
+        ``args.secret`` is the Secret's NAME (``--secret`` help: "Secret name, e.g.
+        marketing-secrets") and ``args.key`` is the DATA-KEY name; both are resource
+        labels an operator needs. The bundle behind them holds every fleet token, so the
+        refusal must name the target without rendering it. ``{exc}`` is a
+        ``json.JSONDecodeError`` whose ``str()`` carries position only, never ``exc.doc``
+        — the canary makes that claim falsifiable instead of folklore.
+        """
+        canary = "canary-token-value-4d1e"
+        malformed = f'{{"tenant-a": "{canary}", "tenant-b": }}'
+        assert canary in malformed, "the scan below is vacuous unless the bundle holds it"
+
+        class StubCluster:
+            def __init__(self, _runner):  # noqa: ANN001
+                pass
+
+            def flux_owner(self, _namespace, _secret):  # noqa: ANN001
+                return None
+
+            def read_secret_key(self, _namespace, _secret, _key):  # noqa: ANN001
+                return malformed
+
+        monkeypatch.setattr(rot, "Runner", lambda dry_run: object())
+        monkeypatch.setattr(rot, "Cluster", StubCluster)
+
+        code = main_rc(["--namespace", "marketing", "--secret", "marketing-secrets", "--key", "K"])
+        captured = capsys.readouterr()
+
+        assert code == 3, captured
+        assert "marketing/marketing-secrets:K" in captured.err
+        assert "line 1 column" in captured.err, (
+            f"the JSON position is the actionable half of the message: {captured.err}"
+        )
+        assert canary not in captured.err, "the bundle IS the fleet's tokens"
+        assert canary not in captured.out
+
     def test_the_leak_scan_would_actually_catch_a_leak(self):
         """Discriminating power for the scan above — otherwise it proves nothing."""
         assert any(token in f"debug: {OLD_A}" for token in ALL_FIXTURE_TOKENS)
