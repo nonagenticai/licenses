@@ -97,17 +97,24 @@ def tenant(world) -> str:
 
 
 @contextmanager
-def _admin(db: DatabaseManager, tenant_id: str) -> Iterator[TestClient]:
+def _as_app(db: DatabaseManager, tenant_id: str, azp: str) -> Iterator[TestClient]:
+    """A license-admin client signed as ``azp``'s api_client (owner resolved from it)."""
     main.db_manager = db
     user = KeycloakUser(
-        sub=f"service-account-{ADMIN}",
-        preferred_username=f"service-account-{ADMIN}",
+        sub=f"service-account-{azp}",
+        preferred_username=f"service-account-{azp}",
         realm_access={"roles": ["license-admin"]},
         resource_access={},
     )
     with TestClient(main.app, raise_server_exceptions=False) as client:
-        client.headers["Authorization"] = f"Bearer {_make_mock_jwt(user, azp=ADMIN)}"
+        client.headers["Authorization"] = f"Bearer {_make_mock_jwt(user, azp=azp)}"
         client.headers["X-Tenant-Id"] = tenant_id
+        yield client
+
+
+@contextmanager
+def _admin(db: DatabaseManager, tenant_id: str) -> Iterator[TestClient]:
+    with _as_app(db, tenant_id, ADMIN) as client:
         yield client
 
 
@@ -258,6 +265,49 @@ class TestBundleToken:
         assert body["license_id"] == minted["license_id"]
         assert body["app"]["key"] == "strata-rag"
         assert body["plan"]["code"] == "standard"
+
+
+class TestDependencyTokenRevoke:
+    """A leaked bundle token must be revocable by the tenant owner's admin even when it
+    was minted on a DEPENDENCY licence (``bundle_id`` NULL, platform-issued). That is the
+    containment action; before the token arm passed ``allow_dependency`` it answered 403
+    ``app_not_issuable_by_caller`` and the only remedy was to wait out the 15-minute TTL.
+    Revocation is credential-only: the dependency licence must stay active."""
+
+    def _mint_strata_rag(self, world: DatabaseManager, tenant: str) -> dict:
+        with _admin(world, tenant) as c:
+            assert _ensure(c, tenant).status_code == 200
+        with _minter(world, MINTER) as c:
+            resp = _mint(c, tenant, "strata-rag")
+        assert resp.status_code == 201, resp.text
+        return resp.json()
+
+    def _revoked(self, world: DatabaseManager, token_id: str) -> bool:
+        with world.engine.connect() as conn:
+            return bool(
+                conn.execute(
+                    text("SELECT revoked FROM token WHERE id = :i"), {"i": token_id}
+                ).scalar_one()
+            )
+
+    def test_the_owner_admin_revokes_a_dependency_bundle_token(self, world, tenant):
+        minted = self._mint_strata_rag(world, tenant)
+        with _admin(world, tenant) as c:
+            resp = c.post("/license/revoke", json={"token": minted["token"]})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["revoked"] is True
+        assert self._revoked(world, minted["token_id"]) is True
+        # Credential-only: the dependency licence is untouched.
+        assert _licences(world, tenant)["strata-rag"][0][1:] == (True, None)
+
+    def test_a_granted_foreign_app_still_cannot_revoke_it(self, world, tenant):
+        minted = self._mint_strata_rag(world, tenant)
+        world.put_tenant_grant(tenant, "fr", "test")
+        with _as_app(world, tenant, "fr-backend") as c:
+            resp = c.post("/license/revoke", json={"token": minted["token"]})
+        assert resp.status_code == 403, resp.text
+        assert resp.json()["detail"]["error"] == "app_not_issuable_by_caller"
+        assert self._revoked(world, minted["token_id"]) is False
 
 
 def _revoke(client: TestClient, licence_id: str):
