@@ -563,8 +563,8 @@ def _authorize_token_revoke(user: User, raw_token: str, tenant_id: str) -> None:
     """Revocation rule for ``POST /license/revoke`` by raw token, decided over
     EVERY licence of ``tenant_id`` carrying the token — exactly the rows
     ``revoke_token_for_tenant`` writes — via ``_authorize_licence_revoke`` (issuer
-    per app, or the tenant owner over bundle-minted rows). No row on this tenant
-    is left to the revoke itself, which answers "not found".
+    per app, or the tenant owner over bundle-minted AND dependency rows). No row on
+    this tenant is left to the revoke itself, which answers "not found".
 
     It used to look up ONE row by hash (non-unique) and authorize that row's app
     only: when the pick landed on another tenant's twin it returned without any
@@ -577,7 +577,7 @@ def _authorize_token_revoke(user: User, raw_token: str, tenant_id: str) -> None:
     )
     if not twins:
         return
-    _authorize_licence_revoke(user, twins, tenant_id, "token_revoke")
+    _authorize_licence_revoke(user, twins, tenant_id, "token_revoke", allow_dependency=True)
 
 
 def _audit_cross_owner(user: User, action: str, tenant: Tenant | None, detail: str = "") -> None:
@@ -925,11 +925,12 @@ def _bundle_owner_may_revoke(
     audit lines are written by ``_authorize_licence_revoke`` once the WHOLE call
     is authorized.
 
-    ``allow_dependency`` (``POST /license/revoke`` by licence id only): a DEPENDENCY
-    licence (``is_dependency``, ``bundle_id`` NULL — shared, so it names no bundle)
-    is admitted too. The route then refuses 409 ``dependency_still_required`` when a
-    remaining active licence on the tenant still requires it, checked in the
-    revoke's own transaction.
+    ``allow_dependency`` (both arms of ``POST /license/revoke`` — by licence id and
+    by token): a DEPENDENCY licence (``is_dependency``, ``bundle_id`` NULL — shared,
+    so it names no bundle) is admitted too. On the licence-id arm the route then
+    refuses 409 ``dependency_still_required`` when a remaining active licence on the
+    tenant still requires it, checked in the revoke's own transaction; the token arm
+    revokes credentials only, so the licence itself stays active.
     """
     owner = user.owner_key
     if owner is None or not licences or tenant_id is None:
